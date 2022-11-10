@@ -41,6 +41,11 @@ func main() {
 
 	switch os.Args[1] {
 	case "create":
+		if len(os.Args) != 3 {
+			fmt.Printf("Usage: jiwa create <project key>")
+			os.Exit(1)
+		}
+
 		summary, description, err := CreateIssueSummaryDescription("")
 		if err != nil {
 			fmt.Printf("failed to get summary and description: %s\n", err)
@@ -48,7 +53,7 @@ func main() {
 		}
 
 		issue, err := c.CreateIssue(context.TODO(), jiwa.CreateIssueInput{
-			Project:     "JIWA",
+			Project:     os.Args[2],
 			Summary:     summary,
 			Description: description,
 			Labels:      nil,
