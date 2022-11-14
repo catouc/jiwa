@@ -42,7 +42,7 @@ func main() {
 	switch os.Args[1] {
 	case "create":
 		if len(os.Args) != 3 {
-			fmt.Printf("Usage: jiwa create <project key>")
+			fmt.Println("Usage: jiwa create <project key>")
 			os.Exit(1)
 		}
 
