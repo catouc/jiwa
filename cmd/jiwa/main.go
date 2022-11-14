@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"github.com/catouc/jiwa/internal/jiwa"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -22,20 +24,70 @@ var (
 	reassign = flag.NewFlagSet("reassign", flag.ContinueOnError)
 )
 
-func main() {
-	if len(os.Args) != 2 {
+type Config struct {
+	BaseURL        string `json:"baseURL"`
+	APIVersion     string `json:"apiVersion"`
+	EndpointPrefix string `json:"endpointPrefix"`
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+}
+
+var cfg Config
+
+func init() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("cannot locate user home dir, is `$HOME` set? Detailed error: %s\n", err)
+		os.Exit(1)
+	}
+
+	cfgFileLoc := path.Join(homeDir, ".config", "jiwa", "config.json")
+
+	cfgBytes, err := os.ReadFile(cfgFileLoc)
+	if err != nil {
+		fmt.Printf("cannot locate configuration file, was it created under %s? Detailed error: %s\n", cfgFileLoc, err)
+		os.Exit(1)
+	}
+
+	err = json.Unmarshal(cfgBytes, &cfg)
+	if err != nil {
+		fmt.Printf("failed to read configuration file: %s\n", err)
+		os.Exit(1)
+	}
+
+	username, set := os.LookupEnv("JIWA_USERNAME")
+	if set {
+		cfg.Username = username
+	}
+	password, set := os.LookupEnv("JIWA_PASSWORD")
+	if set {
+		cfg.Password = password
+	}
+
+	if cfg.Password == "" || cfg.Username == "" || cfg.BaseURL == "" {
+		fmt.Printf(`Config is missing important values, \"baseURL\", \"username\" and \"password\" need to be set.
+"username" and "password" can be configured through their respective environment variables "JIWA_USERNAME" and "JIWA_PASSWORD".
+The configuration file is located at %s
+`, cfgFileLoc)
+		os.Exit(1)
+	}
+
+	if len(os.Args) < 2 {
 		fmt.Printf("Usage: jiwa {create|edit|list|move|reassign}\n")
 		os.Exit(1)
 	}
 
+}
+
+func main() {
 	httpClient := http.DefaultClient
 	httpClient.Timeout = 3 * time.Second
 
 	c := jiwa.Client{
-		Username:   os.Getenv("JIRA_USERNAME"),
-		Password:   os.Getenv("JIRA_PASSWORD"),
-		BaseURL:    "https://catouc.atlassian.net",
-		APIVersion: "2",
+		Username:   cfg.Username,
+		Password:   cfg.Password,
+		BaseURL:    cfg.BaseURL + cfg.EndpointPrefix,
+		APIVersion: cfg.APIVersion,
 		HTTPClient: httpClient,
 	}
 
@@ -110,8 +162,6 @@ func main() {
 }
 
 func CreateIssueSummaryDescription(prefill string) (string, string, error) {
-	fmt.Printf("prefill: %s\n", prefill)
-
 	scanner, cleanup, err := editor.SetupTmpFileWithEditor(prefill)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to set up scanner on tmpFile: %w", err)
@@ -121,7 +171,6 @@ func CreateIssueSummaryDescription(prefill string) (string, string, error) {
 	var title string
 	descriptionBuilder := strings.Builder{}
 	for scanner.Scan() {
-		fmt.Printf("scanner text: %s\n", scanner.Text())
 		if title == "" {
 			title = scanner.Text()
 			continue

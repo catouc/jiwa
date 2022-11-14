@@ -22,7 +22,6 @@ type Client struct {
 
 func (c *Client) callAPI(ctx context.Context, method, endpoint string, params url.Values, body io.Reader) ([]byte, error) {
 	reqURL := fmt.Sprintf("%s/rest/api/%s/%s?%s", c.BaseURL, c.APIVersion, endpoint, params.Encode())
-	fmt.Println(reqURL)
 	req, err := http.NewRequestWithContext(ctx, method, reqURL, body)
 	if err != nil {
 		return nil, err
@@ -41,8 +40,6 @@ func (c *Client) callAPI(ctx context.Context, method, endpoint string, params ur
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(resp.StatusCode)
 
 	if resp.StatusCode > 299 {
 		return nil, fmt.Errorf("failed to call API %d: %s", resp.StatusCode, string(bodyBytes))
