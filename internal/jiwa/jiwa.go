@@ -121,6 +121,15 @@ func (c *Client) UpdateIssue(ctx context.Context, issue jira.Issue) error {
 }
 
 func (c *Client) AssignIssue(ctx context.Context, key string, assignee string) error {
+	i := jira.Issue{
+		Key: key,
+		Fields: &jira.IssueFields{
+			Assignee: &jira.User{Name: assignee},
+		},
+	}
+
+	return c.UpdateIssue(ctx, i)
+}
 
 func (c *Client) Search(ctx context.Context, jql string) ([]jira.Issue, error) {
 	if jql == "" {
@@ -143,7 +152,8 @@ func (c *Client) Search(ctx context.Context, jql string) ([]jira.Issue, error) {
 	}{}
 	err = json.Unmarshal(b, &searchResp)
 	if err != nil {
-		return fmt.Errorf("failed to reassign ticket: %s", err)
+		fmt.Println(string(b))
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	return searchResp.Issues, nil

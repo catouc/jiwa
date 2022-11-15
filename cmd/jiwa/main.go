@@ -197,7 +197,7 @@ func main() {
 
 		err := c.AssignIssue(context.TODO(), os.Args[2], os.Args[3])
 		if err != nil {
-			fmt.Printf("failed to assign issue to %s: %s\n", os.Args[2], err)
+			fmt.Printf("failed to assign issue to %s: %s\n", os.Args[3], err)
 		}
 	}
 }
