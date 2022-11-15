@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"text/tabwriter"
 	"time"
 )
 
@@ -22,6 +23,10 @@ var (
 	list     = flag.NewFlagSet("list", flag.ContinueOnError)
 	move     = flag.NewFlagSet("move", flag.ContinueOnError)
 	reassign = flag.NewFlagSet("reassign", flag.ContinueOnError)
+
+	listUser    = list.String("user", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
+	listStatus  = list.String("status", "to do", "Set the status of the tickets you want to see")
+	listProject = list.String("project", "", "Set the project to search in")
 )
 
 type Config struct {
@@ -30,6 +35,7 @@ type Config struct {
 	EndpointPrefix string `json:"endpointPrefix"`
 	Username       string `json:"username"`
 	Password       string `json:"password"`
+	DefaultProject string `json:"defaultProject"`
 }
 
 var cfg Config
@@ -146,6 +152,41 @@ func main() {
 		fmt.Printf("%s/browse/%s\n", c.BaseURL, os.Args[2])
 	case "list":
 	case "ls":
+		err := list.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("Usage: jiwa ls [-user|-status]")
+			os.Exit(1)
+		}
+
+		var user string
+		switch *listUser {
+		case "empty":
+			user = " is EMPTY"
+		case "":
+			user = "= " + cfg.Username
+		default:
+			user = "= " + *listUser
+		}
+
+		project := cfg.DefaultProject
+		if *listProject != "" {
+			project = *listProject
+		}
+
+		jql := fmt.Sprintf("project=%s AND status=\"%s\" AND assignee%s", project, *listStatus, user)
+		issues, err := c.Search(context.TODO(), jql)
+		if err != nil {
+			fmt.Printf("could not list issues: %s\n", err)
+			os.Exit(1)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
+		fmt.Fprintf(w, "ID\tSummary\tURL\n")
+		for _, i := range issues {
+			issueURL := fmt.Sprintf("%s/browse/%s", c.BaseURL, i.Key)
+			fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
+		}
+		w.Flush()
 	case "move":
 	case "mv":
 	case "reassign":

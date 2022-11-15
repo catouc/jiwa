@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/andygrunwald/go-jira"
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/andygrunwald/go-jira"
 )
 
 type Client struct {
@@ -122,14 +122,29 @@ func (c *Client) UpdateIssue(ctx context.Context, issue jira.Issue) error {
 
 func (c *Client) AssignIssue(ctx context.Context, key string, assignee string) error {
 
-	params := url.Values{}
-	params.Set("issueIdOrKey", key)
-	params.Set("username", assignee)
+func (c *Client) Search(ctx context.Context, jql string) ([]jira.Issue, error) {
+	if jql == "" {
+		return nil, errors.New("cannot search with empty search query")
+	}
 
-	_, err := c.callAPI(ctx, http.MethodPut, "issue/"+key+"/assignee", nil, nil)
+	params := url.Values{}
+	params.Set("jql", jql)
+
+	b, err := c.callAPI(ctx, http.MethodGet, "search", params, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	searchResp := struct {
+		StartAt    int          `json:"startAt"`
+		MaxResults int          `json:"maxResults"`
+		Total      int          `json:"total"`
+		Issues     []jira.Issue `json:"issues"`
+	}{}
+	err = json.Unmarshal(b, &searchResp)
 	if err != nil {
 		return fmt.Errorf("failed to reassign ticket: %s", err)
 	}
 
-	return nil
+	return searchResp.Issues, nil
 }
