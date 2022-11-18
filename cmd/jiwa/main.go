@@ -161,11 +161,11 @@ func main() {
 		var user string
 		switch *listUser {
 		case "empty":
-			user = " is EMPTY"
+			user = "AND assignee is EMPTY"
 		case "":
-			user = "= " + cfg.Username
+			user = ""
 		default:
-			user = "= " + *listUser
+			user = "AND assignee= " + *listUser
 		}
 
 		project := cfg.DefaultProject
@@ -173,7 +173,7 @@ func main() {
 			project = *listProject
 		}
 
-		jql := fmt.Sprintf("project=%s AND status=\"%s\" AND assignee%s", project, *listStatus, user)
+		jql := fmt.Sprintf("project=%s AND status=\"%s\" %s", project, *listStatus, user)
 		issues, err := c.Search(context.TODO(), jql)
 		if err != nil {
 			fmt.Printf("could not list issues: %s\n", err)
