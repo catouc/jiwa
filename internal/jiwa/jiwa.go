@@ -158,3 +158,16 @@ func (c *Client) Search(ctx context.Context, jql string) ([]jira.Issue, error) {
 
 	return searchResp.Issues, nil
 }
+
+func (c *Client) LabelIssue(ctx context.Context, key string, labels ...string) error {
+	if len(labels) == 0 {
+		return errors.New("need to supply at least one label")
+	}
+
+	i := jira.Issue{
+		Key:    key,
+		Fields: &jira.IssueFields{Labels: labels},
+	}
+
+	return c.UpdateIssue(ctx, i)
+}

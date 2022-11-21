@@ -23,6 +23,7 @@ var (
 	list     = flag.NewFlagSet("list", flag.ContinueOnError)
 	move     = flag.NewFlagSet("move", flag.ContinueOnError)
 	reassign = flag.NewFlagSet("reassign", flag.ContinueOnError)
+	label    = flag.NewFlagSet("label", flag.ContinueOnError)
 
 	listUser    = list.String("user", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
 	listStatus  = list.String("status", "to do", "Set the status of the tickets you want to see")
@@ -198,6 +199,18 @@ func main() {
 		err := c.AssignIssue(context.TODO(), os.Args[2], os.Args[3])
 		if err != nil {
 			fmt.Printf("failed to assign issue to %s: %s\n", os.Args[3], err)
+			os.Exit(1)
+		}
+	case "label":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
+			os.Exit(1)
+		}
+
+		err := c.LabelIssue(context.TODO(), os.Args[2], os.Args[3:]...)
+		if err != nil {
+			fmt.Printf("failed to label issue: %s\n", err)
+			os.Exit(1)
 		}
 	}
 }
