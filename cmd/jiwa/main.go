@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,6 +26,9 @@ var (
 	move     = flag.NewFlagSet("move", flag.ContinueOnError)
 	reassign = flag.NewFlagSet("reassign", flag.ContinueOnError)
 	label    = flag.NewFlagSet("label", flag.ContinueOnError)
+
+	createProject = create.String("project", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
+	createIn      = create.String("in", "", "Control from where the ticket is filled in, can be a file path or \"-\" for stdin")
 
 	listUser    = list.String("user", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
 	listStatus  = list.String("status", "to do", "Set the status of the tickets you want to see")
@@ -98,21 +103,68 @@ func main() {
 		HTTPClient: httpClient,
 	}
 
+	stat, _ := os.Stdin.Stat()
+
 	switch os.Args[1] {
 	case "create":
-		if len(os.Args) != 3 {
-			fmt.Println("Usage: jiwa create <project key>")
+		err := create.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("Usage: jiwa create [-project]")
 			os.Exit(1)
 		}
 
-		summary, description, err := CreateIssueSummaryDescription("")
-		if err != nil {
-			fmt.Printf("failed to get summary and description: %s\n", err)
+		var project string
+		switch {
+		case *createProject == "" && cfg.DefaultProject != "":
+			project = cfg.DefaultProject
+		case *createProject == "" && cfg.DefaultProject == "":
+			fmt.Println("Usage: jiwa create [-project]")
 			os.Exit(1)
+		case *createProject != "":
+			project = *createProject
+		}
+
+		var summary, description string
+		switch *createIn {
+		case "":
+			summary, description, err = CreateIssueSummaryDescription("")
+			if err != nil {
+				fmt.Printf("failed to get summary and description: %s\n", err)
+				os.Exit(1)
+			}
+		case "-":
+			in, err := readStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			fmt.Println(string(in))
+
+			scanner := bufio.NewScanner(bytes.NewBuffer(in))
+			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
+			if err != nil {
+				fmt.Printf("failed to get summary and description: %s\n", err)
+				os.Exit(1)
+			}
+		default:
+			fBytes, err := os.ReadFile(*createIn)
+			if err != nil {
+				fmt.Printf("failed to read file contents: %s", err)
+				os.Exit(1)
+			}
+
+			scanner := bufio.NewScanner(bytes.NewBuffer(fBytes))
+
+			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
+			if err != nil {
+				fmt.Printf("failed to get summary and description: %s\n", err)
+				os.Exit(1)
+			}
 		}
 
 		issue, err := c.CreateIssue(context.TODO(), jiwa.CreateIssueInput{
-			Project:     os.Args[2],
+			Project:     project,
 			Summary:     summary,
 			Description: description,
 			Labels:      nil,
@@ -123,7 +175,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("%s/browse/%s\n", c.BaseURL, issue.Key)
+		fmt.Println(ConstructIssueURL(issue.Key, cfg.BaseURL))
 	case "edit":
 		if len(os.Args) != 3 {
 			fmt.Println("Usage: jiwa edit <issue ID>")
@@ -150,7 +202,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("%s/browse/%s\n", c.BaseURL, os.Args[2])
+		fmt.Println(ConstructIssueURL(os.Args[2], cfg.BaseURL))
 	case "list":
 	case "ls":
 		err := list.Parse(os.Args[2:])
@@ -191,27 +243,67 @@ func main() {
 	case "move":
 	case "mv":
 	case "reassign":
-		if len(os.Args) != 4 {
-			fmt.Println("Usage: jiwa reassign <issue ID> <username>")
-			os.Exit(1)
+		var ticketID, user string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(os.Args) != 3 {
+				fmt.Println("Usage: jiwa reassign <username>")
+				os.Exit(1)
+			}
+
+			in, err := readStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			ticketID = StripBaseURL(string(in), cfg.BaseURL)
+			user = os.Args[2]
+		} else {
+			if len(os.Args) != 4 {
+				fmt.Println("Usage: jiwa reassign <issue ID> <username>")
+				os.Exit(1)
+			}
+			ticketID = os.Args[2]
+			user = os.Args[3]
 		}
 
-		err := c.AssignIssue(context.TODO(), os.Args[2], os.Args[3])
+		err := c.AssignIssue(context.TODO(), ticketID, user)
 		if err != nil {
-			fmt.Printf("failed to assign issue to %s: %s\n", os.Args[3], err)
-			os.Exit(1)
-		}
-	case "label":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
+			fmt.Printf("failed to assign issue to %s: %s\n", ticketID, err)
 			os.Exit(1)
 		}
 
-		err := c.LabelIssue(context.TODO(), os.Args[2], os.Args[3:]...)
+		fmt.Println(ConstructIssueURL(ticketID, cfg.BaseURL))
+	case "label":
+		var ticketID string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(os.Args) < 3 {
+				fmt.Println("Usage: jiwa label <label> <label> ...")
+			}
+
+			in, err := readStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			ticketID = StripBaseURL(string(in), cfg.BaseURL)
+		} else {
+			if len(os.Args) < 4 {
+				fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
+				os.Exit(1)
+			}
+			ticketID = os.Args[2]
+		}
+
+		err := c.LabelIssue(context.TODO(), ticketID, os.Args[2:]...)
 		if err != nil {
 			fmt.Printf("failed to label issue: %s\n", err)
 			os.Exit(1)
 		}
+
+		fmt.Println(ticketID)
+		fmt.Println(ConstructIssueURL(ticketID, cfg.BaseURL))
 	}
 }
 
@@ -222,6 +314,19 @@ func CreateIssueSummaryDescription(prefill string) (string, string, error) {
 	}
 	defer cleanup()
 
+	title, description, err := BuildSummaryAndDescriptionFromScanner(scanner)
+	if err != nil {
+		return "", "", fmt.Errorf("scanner failure: %w", err)
+	}
+
+	if title == "" {
+		return "", "", errors.New("the summary line needs to be filled at least")
+	}
+
+	return title, description, nil
+}
+
+func BuildSummaryAndDescriptionFromScanner(scanner *bufio.Scanner) (string, string, error) {
 	var title string
 	descriptionBuilder := strings.Builder{}
 	for scanner.Scan() {
@@ -233,16 +338,7 @@ func CreateIssueSummaryDescription(prefill string) (string, string, error) {
 		descriptionBuilder.WriteString("\n")
 	}
 
-	err = scanner.Err()
-	if err != nil {
-		return "", "", fmt.Errorf("scanner failure: %w", err)
-	}
-
-	if title == "" {
-		return "", "", errors.New("the summary line needs to be filled at least")
-	}
-
-	return title, descriptionBuilder.String(), nil
+	return title, descriptionBuilder.String(), scanner.Err()
 }
 
 func GetIssueIntoEditor(c jiwa.Client, key string) (string, string, error) {
@@ -252,4 +348,31 @@ func GetIssueIntoEditor(c jiwa.Client, key string) (string, string, error) {
 	}
 
 	return CreateIssueSummaryDescription(issue.Fields.Summary + "\n" + issue.Fields.Description)
+}
+
+func readStdin() ([]byte, error) {
+	var buf []byte
+	scanner := bufio.NewScanner(os.Stdin)
+
+	var str string
+	for scanner.Scan() {
+		str += scanner.Text() + "\n"
+		buf = append(buf, scanner.Bytes()...)
+		buf = append(buf, 10) // add the newline back into the buffer
+	}
+
+	err := scanner.Err()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read stdin: %v", err)
+	}
+
+	return buf, nil
+}
+
+func StripBaseURL(url, baseURL string) string {
+	return strings.TrimPrefix(baseURL+"/browse/", url)
+}
+
+func ConstructIssueURL(issueKey, baseURL string) string {
+	return fmt.Sprintf("%s/browse/%s", baseURL, issueKey)
 }
