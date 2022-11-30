@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type Client struct {
@@ -170,4 +171,72 @@ func (c *Client) LabelIssue(ctx context.Context, key string, labels ...string) e
 	}
 
 	return c.UpdateIssue(ctx, i)
+}
+
+func (c *Client) ListIssueTransitions(ctx context.Context, key string) ([]jira.Transition, error) {
+	b, err := c.callAPI(ctx, http.MethodGet, "issue/"+key+"/transitions", nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list transitions: %w", err)
+	}
+
+	var resp struct {
+		Transitions []jira.Transition `json:"transitions"`
+	}
+	err = json.Unmarshal(b, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarhal response: %w", err)
+	}
+
+	return resp.Transitions, nil
+}
+
+type TransitionRequest struct {
+	Transition Transition `json:"transition"`
+}
+
+type Transition struct {
+	ID string `json:"id"`
+}
+
+func (c *Client) TransitionIssue(ctx context.Context, key string, status string) error {
+	transitions, err := c.ListIssueTransitions(ctx, key)
+	if err != nil {
+		return fmt.Errorf("could not list transitions: %w", err)
+	}
+
+	status = strings.ToLower(status)
+
+	validTransitions := make([]string, len(transitions), len(transitions))
+	transitionID := ""
+	for _, t := range transitions {
+		if strings.ToLower(t.Name) == status {
+			transitionID = t.ID
+		}
+
+		validTransitions = append(validTransitions, t.Name)
+	}
+
+	if transitionID == "" {
+		return fmt.Errorf(
+			"could not find %s as a valid transition for %s, valid transitions are: %s",
+			status,
+			key,
+			strings.Join(validTransitions, ","),
+		)
+	}
+
+	tr := jira.CreateTransitionPayload{
+		Transition: jira.TransitionPayload{ID: transitionID},
+	}
+	body, err := json.Marshal(&tr)
+	if err != nil {
+		return fmt.Errorf("failed to marshal transition request: %w", err)
+	}
+
+	_, err = c.callAPI(ctx, http.MethodPost, "issue/"+key+"/transitions", nil, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("failed to transition issue to %s: %w", status, err)
+	}
+
+	return nil
 }

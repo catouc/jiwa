@@ -139,8 +139,6 @@ func main() {
 				os.Exit(1)
 			}
 
-			fmt.Println(string(in))
-
 			scanner := bufio.NewScanner(bytes.NewBuffer(in))
 			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
 			if err != nil {
@@ -242,6 +240,38 @@ func main() {
 		w.Flush()
 	case "move":
 	case "mv":
+		var ticketID, status string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(os.Args) != 3 {
+				fmt.Println("Usage: jiwa mv <status>")
+				os.Exit(1)
+			}
+
+			in, err := readStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			ticketID = StripBaseURL(string(in), cfg.BaseURL)
+			status = os.Args[2]
+		} else {
+			if len(os.Args) != 4 {
+				fmt.Println("Usage: jiwa mv <issueID> <status>")
+				os.Exit(1)
+			}
+
+			ticketID = os.Args[2]
+			status = os.Args[3]
+		}
+
+		err := c.TransitionIssue(context.TODO(), ticketID, status)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println(ConstructIssueURL(ticketID, cfg.BaseURL))
 	case "reassign":
 		var ticketID, user string
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
@@ -302,7 +332,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Println(ticketID)
 		fmt.Println(ConstructIssueURL(ticketID, cfg.BaseURL))
 	}
 }
@@ -354,9 +383,7 @@ func readStdin() ([]byte, error) {
 	var buf []byte
 	scanner := bufio.NewScanner(os.Stdin)
 
-	var str string
 	for scanner.Scan() {
-		str += scanner.Text() + "\n"
 		buf = append(buf, scanner.Bytes()...)
 		buf = append(buf, 10) // add the newline back into the buffer
 	}
@@ -370,7 +397,7 @@ func readStdin() ([]byte, error) {
 }
 
 func StripBaseURL(url, baseURL string) string {
-	return strings.TrimPrefix(baseURL+"/browse/", url)
+	return strings.TrimPrefix(strings.TrimSpace(url), baseURL+"/browse/")
 }
 
 func ConstructIssueURL(issueKey, baseURL string) string {
