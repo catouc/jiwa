@@ -27,8 +27,8 @@ var (
 	reassign = flag.NewFlagSet("reassign", flag.ContinueOnError)
 	label    = flag.NewFlagSet("label", flag.ContinueOnError)
 
-	createProject = create.String("project", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
-	createIn      = create.String("in", "", "Control from where the ticket is filled in, can be a file path or \"-\" for stdin")
+	createProject = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
+	createIn      = create.StringP("in", "i", "", "Control from where the ticket is filled in, can be a file path or \"-\" for stdin")
 
 	listUser    = list.String("user", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
 	listStatus  = list.String("status", "to do", "Set the status of the tickets you want to see")
@@ -125,27 +125,8 @@ func main() {
 		}
 
 		var summary, description string
-		switch *createIn {
-		case "":
-			summary, description, err = CreateIssueSummaryDescription("")
-			if err != nil {
-				fmt.Printf("failed to get summary and description: %s\n", err)
-				os.Exit(1)
-			}
-		case "-":
-			in, err := readStdin()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			scanner := bufio.NewScanner(bytes.NewBuffer(in))
-			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
-			if err != nil {
-				fmt.Printf("failed to get summary and description: %s\n", err)
-				os.Exit(1)
-			}
-		default:
+		switch {
+		case *createIn != "":
 			fBytes, err := os.ReadFile(*createIn)
 			if err != nil {
 				fmt.Printf("failed to read file contents: %s", err)
@@ -154,6 +135,25 @@ func main() {
 
 			scanner := bufio.NewScanner(bytes.NewBuffer(fBytes))
 
+			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
+			if err != nil {
+				fmt.Printf("failed to get summary and description: %s\n", err)
+				os.Exit(1)
+			}
+		case (stat.Mode() & os.ModeCharDevice) != 0:
+			summary, description, err = CreateIssueSummaryDescription("")
+			if err != nil {
+				fmt.Printf("failed to get summary and description: %s\n", err)
+				os.Exit(1)
+			}
+		case (stat.Mode() & os.ModeCharDevice) == 0:
+			in, err := readStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			scanner := bufio.NewScanner(bytes.NewBuffer(in))
 			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
 			if err != nil {
 				fmt.Printf("failed to get summary and description: %s\n", err)
