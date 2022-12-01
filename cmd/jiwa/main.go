@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/andygrunwald/go-jira"
+	"github.com/catouc/jiwa/internal/commands"
 	"github.com/catouc/jiwa/internal/editor"
 	"github.com/catouc/jiwa/internal/jiwa"
 	flag "github.com/spf13/pflag"
@@ -30,21 +31,13 @@ var (
 	createProject = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
 	createIn      = create.StringP("in", "i", "", "Control from where the ticket is filled in, can be a file path or \"-\" for stdin")
 
-	listUser    = list.String("user", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
-	listStatus  = list.String("status", "to do", "Set the status of the tickets you want to see")
-	listProject = list.String("project", "", "Set the project to search in")
+	listUser    = list.StringP("user", "u", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
+	listStatus  = list.StringP("status", "s", "to do", "Set the status of the tickets you want to see")
+	listProject = list.StringP("project", "p", "", "Set the project to search in")
+	listTable   = list.BoolP("table", "t", false, "Pretty print the output into a table :)")
 )
 
-type Config struct {
-	BaseURL        string `json:"baseURL"`
-	APIVersion     string `json:"apiVersion"`
-	EndpointPrefix string `json:"endpointPrefix"`
-	Username       string `json:"username"`
-	Password       string `json:"password"`
-	DefaultProject string `json:"defaultProject"`
-}
-
-var cfg Config
+var cfg commands.Config
 
 func init() {
 	homeDir, err := os.UserHomeDir()
@@ -175,21 +168,32 @@ func main() {
 
 		fmt.Println(ConstructIssueURL(issue.Key, cfg.BaseURL))
 	case "edit":
-		if len(os.Args) != 3 {
-			fmt.Println("Usage: jiwa edit <issue ID>")
-			os.Exit(1)
+		var ticketID string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			in, err := readStdin()
+			if err != nil {
+				fmt.Printf("failed to read stdin: %s\n", err)
+				os.Exit(1)
+			}
+
+			ticketID = StripBaseURL(string(in), cfg.BaseURL)
+		} else {
+			if len(os.Args) != 3 {
+				fmt.Println("Usage: jiwa edit <issue ID>")
+				os.Exit(1)
+			}
+
+			ticketID = os.Args[2]
 		}
 
-		summary, description, err := GetIssueIntoEditor(c, os.Args[2])
+		summary, description, err := GetIssueIntoEditor(c, ticketID)
 		if err != nil {
 			fmt.Printf("failed to get summary and description: %s\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("summary: %s | description: %s\n", summary, description)
-
 		err = c.UpdateIssue(context.TODO(), jira.Issue{
-			Key: os.Args[2],
+			Key: ticketID,
 			Fields: &jira.IssueFields{
 				Summary:     summary,
 				Description: description,
@@ -231,16 +235,23 @@ func main() {
 			os.Exit(1)
 		}
 
-		w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
-		fmt.Fprintf(w, "ID\tSummary\tURL\n")
-		for _, i := range issues {
-			issueURL := fmt.Sprintf("%s/browse/%s", c.BaseURL, i.Key)
-			fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
+		if *listTable {
+			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
+			fmt.Fprintf(w, "ID\tSummary\tURL\n")
+			for _, i := range issues {
+				issueURL := fmt.Sprintf("%s/browse/%s", c.BaseURL, i.Key)
+				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
+			}
+			w.Flush()
+		} else {
+			for _, i := range issues {
+				fmt.Println(ConstructIssueURL(i.Key, cfg.BaseURL))
+			}
 		}
-		w.Flush()
 	case "move":
 	case "mv":
-		var ticketID, status string
+		ticketID := make([]string, 0)
+		var status string
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
 			if len(os.Args) != 3 {
 				fmt.Println("Usage: jiwa mv <status>")
@@ -253,7 +264,15 @@ func main() {
 				os.Exit(1)
 			}
 
-			ticketID = StripBaseURL(string(in), cfg.BaseURL)
+			scanner := bufio.NewScanner(bytes.NewBuffer(in))
+			for scanner.Scan() {
+				ticketID = append(ticketID, StripBaseURL(scanner.Text(), cfg.BaseURL))
+			}
+			if scanner.Err() != nil {
+				fmt.Printf("failed to read in all tickets: %s\n", err)
+				os.Exit(1)
+			}
+
 			status = os.Args[2]
 		} else {
 			if len(os.Args) != 4 {
@@ -261,19 +280,22 @@ func main() {
 				os.Exit(1)
 			}
 
-			ticketID = os.Args[2]
+			ticketID = append(ticketID, os.Args[2])
 			status = os.Args[3]
 		}
 
-		err := c.TransitionIssue(context.TODO(), ticketID, status)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		for _, t := range ticketID {
+			err := c.TransitionIssue(context.TODO(), t, status)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 
-		fmt.Println(ConstructIssueURL(ticketID, cfg.BaseURL))
+			fmt.Println(ConstructIssueURL(t, cfg.BaseURL))
+		}
 	case "reassign":
-		var ticketID, user string
+		var user string
+		ticketID := make([]string, 0)
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
 			if len(os.Args) != 3 {
 				fmt.Println("Usage: jiwa reassign <username>")
@@ -286,26 +308,39 @@ func main() {
 				os.Exit(1)
 			}
 
-			ticketID = StripBaseURL(string(in), cfg.BaseURL)
+			scanner := bufio.NewScanner(bytes.NewBuffer(in))
+			for scanner.Scan() {
+				ticketID = append(ticketID, StripBaseURL(scanner.Text(), cfg.BaseURL))
+			}
+			if scanner.Err() != nil {
+				fmt.Printf("failed to read in all tickets: %s\n", err)
+				os.Exit(1)
+			}
+
+			ticketID = append(ticketID, StripBaseURL(string(in), cfg.BaseURL))
 			user = os.Args[2]
 		} else {
 			if len(os.Args) != 4 {
 				fmt.Println("Usage: jiwa reassign <issue ID> <username>")
 				os.Exit(1)
 			}
-			ticketID = os.Args[2]
+
+			ticketID = append(ticketID, os.Args[2])
 			user = os.Args[3]
 		}
 
-		err := c.AssignIssue(context.TODO(), ticketID, user)
-		if err != nil {
-			fmt.Printf("failed to assign issue to %s: %s\n", ticketID, err)
-			os.Exit(1)
-		}
+		for _, t := range ticketID {
+			err := c.AssignIssue(context.TODO(), t, user)
+			if err != nil {
+				fmt.Printf("failed to assign issue to %s: %s\n", t, err)
+				os.Exit(1)
+			}
 
-		fmt.Println(ConstructIssueURL(ticketID, cfg.BaseURL))
+			fmt.Println(ConstructIssueURL(t, cfg.BaseURL))
+		}
 	case "label":
-		var ticketID string
+		ticketID := make([]string, 0)
+		labels := make([]string, 0)
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
 			if len(os.Args) < 3 {
 				fmt.Println("Usage: jiwa label <label> <label> ...")
@@ -317,22 +352,34 @@ func main() {
 				os.Exit(1)
 			}
 
-			ticketID = StripBaseURL(string(in), cfg.BaseURL)
+			scanner := bufio.NewScanner(bytes.NewBuffer(in))
+			for scanner.Scan() {
+				ticketID = append(ticketID, StripBaseURL(scanner.Text(), cfg.BaseURL))
+			}
+			if scanner.Err() != nil {
+				fmt.Printf("failed to read in all tickets: %s\n", err)
+				os.Exit(1)
+			}
+
+			labels = append(labels, os.Args[2:]...)
 		} else {
 			if len(os.Args) < 4 {
 				fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
 				os.Exit(1)
 			}
-			ticketID = os.Args[2]
+			ticketID = append(ticketID, os.Args[2])
+			labels = append(labels, os.Args[3:]...)
 		}
 
-		err := c.LabelIssue(context.TODO(), ticketID, os.Args[2:]...)
-		if err != nil {
-			fmt.Printf("failed to label issue: %s\n", err)
-			os.Exit(1)
-		}
+		for _, t := range ticketID {
+			err := c.LabelIssue(context.TODO(), t, labels...)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 
-		fmt.Println(ConstructIssueURL(ticketID, cfg.BaseURL))
+			fmt.Println(ConstructIssueURL(t, cfg.BaseURL))
+		}
 	}
 }
 
