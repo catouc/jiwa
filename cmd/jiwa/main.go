@@ -161,7 +161,7 @@ func main() {
 		case "":
 			user = ""
 		default:
-			user = "AND assignee= " + *listUser
+			user = "AND assignee= \"" + *listUser + "\""
 		}
 
 		project := cfg.DefaultProject
