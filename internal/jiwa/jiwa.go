@@ -16,6 +16,7 @@ import (
 type Client struct {
 	Username   string
 	Password   string
+	Token      string
 	BaseURL    string
 	APIVersion string
 	HTTPClient *http.Client
@@ -28,7 +29,14 @@ func (c *Client) callAPI(ctx context.Context, method, endpoint string, params ur
 		return nil, err
 	}
 
-	req.SetBasicAuth(c.Username, c.Password)
+	switch {
+	case c.Username != "" && c.Password != "":
+		req.SetBasicAuth(c.Username, c.Password)
+	case c.Token != "":
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	default:
+		return nil, errors.New("either username+password need to be set or token")
+	}
 	req.Header.Set("content-type", "application/json")
 
 	resp, err := c.HTTPClient.Do(req)

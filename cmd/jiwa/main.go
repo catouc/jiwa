@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/andygrunwald/go-jira"
 	"github.com/catouc/jiwa/internal/commands"
 	"github.com/catouc/jiwa/internal/editor"
 	"github.com/catouc/jiwa/internal/jiwa"
@@ -16,7 +15,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"text/tabwriter"
 	"time"
 )
 
@@ -68,10 +66,15 @@ func init() {
 	if set {
 		cfg.Password = password
 	}
+	token, set := os.LookupEnv("JIWA_TOKEN")
+	if set {
+		cfg.Token = token
+	}
 
-	if cfg.Password == "" || cfg.Username == "" || cfg.BaseURL == "" {
-		fmt.Printf(`Config is missing important values, \"baseURL\", \"username\" and \"password\" need to be set.
-"username" and "password" can be configured through their respective environment variables "JIWA_USERNAME" and "JIWA_PASSWORD".
+	valid := cfg.IsValid()
+	if !valid {
+		fmt.Printf(`Config is missing important values, \"baseURL\" and \"username\" + \"password\" or \"token\" need to be set.
+"username", "password" and "token" can be configured through their respective environment variables "JIWA_USERNAME", "JIWA_PASSWORD" and "JIWA_TOKEN".
 The configuration file is located at %s
 `, cfgFileLoc)
 		os.Exit(1)
@@ -91,10 +94,13 @@ func main() {
 	c := jiwa.Client{
 		Username:   cfg.Username,
 		Password:   cfg.Password,
+		Token:      cfg.Token,
 		BaseURL:    cfg.BaseURL + cfg.EndpointPrefix,
 		APIVersion: cfg.APIVersion,
 		HTTPClient: httpClient,
 	}
+
+	cmd := commands.Command{Client: c, Config: cfg}
 
 	stat, _ := os.Stdin.Stat()
 
@@ -117,136 +123,26 @@ func main() {
 			project = *createProject
 		}
 
-		var summary, description string
-		switch {
-		case *createIn != "":
-			fBytes, err := os.ReadFile(*createIn)
-			if err != nil {
-				fmt.Printf("failed to read file contents: %s", err)
-				os.Exit(1)
-			}
-
-			scanner := bufio.NewScanner(bytes.NewBuffer(fBytes))
-
-			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
-			if err != nil {
-				fmt.Printf("failed to get summary and description: %s\n", err)
-				os.Exit(1)
-			}
-		case (stat.Mode() & os.ModeCharDevice) != 0:
-			summary, description, err = CreateIssueSummaryDescription("")
-			if err != nil {
-				fmt.Printf("failed to get summary and description: %s\n", err)
-				os.Exit(1)
-			}
-		case (stat.Mode() & os.ModeCharDevice) == 0:
-			in, err := readStdin()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			scanner := bufio.NewScanner(bytes.NewBuffer(in))
-			summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
-			if err != nil {
-				fmt.Printf("failed to get summary and description: %s\n", err)
-				os.Exit(1)
-			}
-		}
-
-		issue, err := c.CreateIssue(context.TODO(), jiwa.CreateIssueInput{
-			Project:     project,
-			Summary:     summary,
-			Description: description,
-			Labels:      nil,
-			Type:        "Task",
-		})
+		key, err := cmd.Create(project, *createIn)
 		if err != nil {
-			fmt.Printf("failed to create issue: %s\n", err)
+			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		fmt.Println(ConstructIssueURL(issue.Key, cfg.BaseURL))
+		fmt.Println(ConstructIssueURL(key, cfg.BaseURL))
 	case "edit":
-		var ticketID string
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			in, err := readStdin()
-			if err != nil {
-				fmt.Printf("failed to read stdin: %s\n", err)
-				os.Exit(1)
-			}
-
-			ticketID = StripBaseURL(string(in), cfg.BaseURL)
-		} else {
-			if len(os.Args) != 3 {
-				fmt.Println("Usage: jiwa edit <issue ID>")
-				os.Exit(1)
-			}
-
-			ticketID = os.Args[2]
-		}
-
-		summary, description, err := GetIssueIntoEditor(c, ticketID)
+		key, err := cmd.Edit()
 		if err != nil {
-			fmt.Printf("failed to get summary and description: %s\n", err)
+			fmt.Println(err)
 			os.Exit(1)
 		}
-
-		err = c.UpdateIssue(context.TODO(), jira.Issue{
-			Key: ticketID,
-			Fields: &jira.IssueFields{
-				Summary:     summary,
-				Description: description,
-			},
-		})
-		if err != nil {
-			fmt.Printf("failed to update issue: %s\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println(ConstructIssueURL(os.Args[2], cfg.BaseURL))
+		fmt.Println(ConstructIssueURL(key, cfg.BaseURL))
 	case "list":
 	case "ls":
 		err := list.Parse(os.Args[2:])
 		if err != nil {
 			fmt.Println("Usage: jiwa ls [-user|-status]")
 			os.Exit(1)
-		}
-
-		var user string
-		switch *listUser {
-		case "empty":
-			user = "AND assignee is EMPTY"
-		case "":
-			user = ""
-		default:
-			user = "AND assignee= " + *listUser
-		}
-
-		project := cfg.DefaultProject
-		if *listProject != "" {
-			project = *listProject
-		}
-
-		jql := fmt.Sprintf("project=%s AND status=\"%s\" %s", project, *listStatus, user)
-		issues, err := c.Search(context.TODO(), jql)
-		if err != nil {
-			fmt.Printf("could not list issues: %s\n", err)
-			os.Exit(1)
-		}
-
-		if *listTable {
-			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
-			fmt.Fprintf(w, "ID\tSummary\tURL\n")
-			for _, i := range issues {
-				issueURL := fmt.Sprintf("%s/browse/%s", c.BaseURL, i.Key)
-				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
-			}
-			w.Flush()
-		} else {
-			for _, i := range issues {
-				fmt.Println(ConstructIssueURL(i.Key, cfg.BaseURL))
-			}
 		}
 	case "move":
 	case "mv":
