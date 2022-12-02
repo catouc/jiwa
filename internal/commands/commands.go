@@ -11,6 +11,7 @@ import (
 	"github.com/catouc/jiwa/internal/jiwa"
 	"os"
 	"strings"
+	"time"
 )
 
 type Command struct {
@@ -19,13 +20,14 @@ type Command struct {
 }
 
 type Config struct {
-	BaseURL        string `json:"baseURL"`
-	APIVersion     string `json:"apiVersion"`
-	EndpointPrefix string `json:"endpointPrefix"`
-	Username       string `json:"username"`
-	Password       string `json:"password"`
-	Token          string `json:"token"`
-	DefaultProject string `json:"defaultProject"`
+	BaseURL        string        `json:"baseURL"`
+	APIVersion     string        `json:"apiVersion"`
+	EndpointPrefix string        `json:"endpointPrefix"`
+	Username       string        `json:"username"`
+	Password       string        `json:"password"`
+	Token          string        `json:"token"`
+	Timeout        time.Duration `json:"timeout"`
+	DefaultProject string        `json:"defaultProject"`
 }
 
 func (c *Config) IsValid() bool {

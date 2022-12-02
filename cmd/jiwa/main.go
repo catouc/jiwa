@@ -80,6 +80,14 @@ The configuration file is located at %s
 		os.Exit(1)
 	}
 
+	if cfg.APIVersion == "" {
+		cfg.APIVersion = "2"
+	}
+
+	if cfg.Timeout == 0 {
+		cfg.Timeout = 5 * time.Second
+	}
+
 	if len(os.Args) < 2 {
 		fmt.Printf("Usage: jiwa {create|edit|list|move|reassign}\n")
 		os.Exit(1)
@@ -89,7 +97,7 @@ The configuration file is located at %s
 
 func main() {
 	httpClient := http.DefaultClient
-	httpClient.Timeout = 3 * time.Second
+	httpClient.Timeout = cfg.Timeout
 
 	c := jiwa.Client{
 		Username:   cfg.Username,
