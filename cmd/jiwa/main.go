@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"text/tabwriter"
 	"time"
 )
 
@@ -151,6 +152,42 @@ func main() {
 		if err != nil {
 			fmt.Println("Usage: jiwa ls [-user|-status]")
 			os.Exit(1)
+		}
+
+		var user string
+		switch *listUser {
+		case "empty":
+			user = "AND assignee is EMPTY"
+		case "":
+			user = ""
+		default:
+			user = "AND assignee= " + *listUser
+		}
+
+		project := cfg.DefaultProject
+		if *listProject != "" {
+			project = *listProject
+		}
+
+		jql := fmt.Sprintf("project=%s AND status=\"%s\" %s", project, *listStatus, user)
+		issues, err := c.Search(context.TODO(), jql)
+		if err != nil {
+			fmt.Printf("could not list issues: %s\n", err)
+			os.Exit(1)
+		}
+
+		if *listTable {
+			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
+			fmt.Fprintf(w, "ID\tSummary\tURL\n")
+			for _, i := range issues {
+				issueURL := fmt.Sprintf("%s/browse/%s", c.BaseURL, i.Key)
+				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
+			}
+			w.Flush()
+		} else {
+			for _, i := range issues {
+				fmt.Println(ConstructIssueURL(i.Key, cfg.BaseURL))
+			}
 		}
 	case "move":
 	case "mv":
