@@ -90,7 +90,7 @@ The configuration file is located at %s
 	}
 
 	if len(os.Args) < 2 {
-		fmt.Printf("Usage: jiwa {create|edit|list|move|reassign}\n")
+		fmt.Printf("Usage: jiwa {create|edit|ls|mv|reassign}\n")
 		os.Exit(1)
 	}
 
