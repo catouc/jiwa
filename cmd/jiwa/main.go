@@ -33,7 +33,7 @@ var (
 	listUser    = list.StringP("user", "u", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
 	listStatus  = list.StringP("status", "s", "to do", "Set the status of the tickets you want to see")
 	listProject = list.StringP("project", "p", "", "Set the project to search in")
-	listTable   = list.BoolP("table", "t", false, "Pretty print the output into a table :)")
+	listOut     = list.StringP("output", "o", "raw", "Set the output to be either \"raw\" for piping or \"table\" for nice formatting")
 )
 
 var cfg commands.Config
@@ -176,7 +176,12 @@ func main() {
 			os.Exit(1)
 		}
 
-		if *listTable {
+		switch *listOut {
+		case "raw":
+			for _, i := range issues {
+				fmt.Println(ConstructIssueURL(i.Key, cfg.BaseURL))
+			}
+		case "table":
 			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
 			fmt.Fprintf(w, "ID\tSummary\tURL\n")
 			for _, i := range issues {
@@ -184,10 +189,8 @@ func main() {
 				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
 			}
 			w.Flush()
-		} else {
-			for _, i := range issues {
-				fmt.Println(ConstructIssueURL(i.Key, cfg.BaseURL))
-			}
+		default:
+			fmt.Printf("Usage: jiwa ls --out [table|raw]")
 		}
 	case "move":
 	case "mv":
