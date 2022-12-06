@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -114,4 +115,22 @@ func (c *Command) FishOutProject(projectFlag string) (string, error) {
 	default:
 		return "", errors.New("either \"defaultProject\" needs to be set in the config or \"--project\" needs to be passed")
 	}
+}
+
+func (c *Command) readIssueListFromStdin() ([]string, error) {
+	in, err := readStdin()
+	if err != nil {
+		return nil, err
+	}
+
+	issues := make([]string, 0)
+	scanner := bufio.NewScanner(bytes.NewBuffer(in))
+	for scanner.Scan() {
+		issues = append(issues, StripBaseURL(scanner.Text(), c.Config.BaseURL))
+	}
+	if scanner.Err() != nil {
+		return nil, fmt.Errorf("failed to read in all tickets: %w", err)
+	}
+
+	return issues, nil
 }

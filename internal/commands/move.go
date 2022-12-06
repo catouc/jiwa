@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -11,27 +9,18 @@ import (
 func (c *Command) Move() ([]string, error) {
 	stat, _ := os.Stdin.Stat()
 
-	ticketID := make([]string, 0)
 	var status string
+	var issues []string
+	var err error
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		if len(os.Args) != 3 {
 			fmt.Println("Usage: jiwa mv <status>")
 			os.Exit(1)
 		}
 
-		in, err := readStdin()
+		issues, err = c.readIssueListFromStdin()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		scanner := bufio.NewScanner(bytes.NewBuffer(in))
-		for scanner.Scan() {
-			ticketID = append(ticketID, StripBaseURL(scanner.Text(), c.Config.BaseURL))
-		}
-		if scanner.Err() != nil {
-			fmt.Printf("failed to read in all tickets: %s\n", err)
-			os.Exit(1)
+			return nil, err
 		}
 
 		status = os.Args[2]
@@ -41,18 +30,16 @@ func (c *Command) Move() ([]string, error) {
 			os.Exit(1)
 		}
 
-		ticketID = append(ticketID, os.Args[2])
+		issues = []string{os.Args[2]}
 		status = os.Args[3]
 	}
 
-	out := make([]string, 0)
-	for _, t := range ticketID {
-		err := c.Client.TransitionIssue(context.TODO(), t, status)
+	for _, i := range issues {
+		err = c.Client.TransitionIssue(context.TODO(), i, status)
 		if err != nil {
 			return nil, err
 		}
-
-		out = append(out, t)
 	}
-	return ticketID, nil
+
+	return issues, nil
 }
