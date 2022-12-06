@@ -2,11 +2,9 @@ package commands
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/andygrunwald/go-jira"
 	"github.com/catouc/jiwa/internal/editor"
 	"github.com/catouc/jiwa/internal/jiwa"
 	"os"
@@ -107,93 +105,13 @@ func StripBaseURL(url, baseURL string) string {
 	return strings.TrimPrefix(strings.TrimSpace(url), baseURL+"/browse/")
 }
 
-func (c *Command) Create(project string, srcFilePath string) (string, error) {
-	stat, _ := os.Stdin.Stat()
-
-	var summary, description string
+func (c *Command) FishOutProject(projectFlag string) (string, error) {
 	switch {
-	case srcFilePath != "":
-		fBytes, err := os.ReadFile(srcFilePath)
-		if err != nil {
-			fmt.Printf("failed to read file contents: %s", err)
-			os.Exit(1)
-		}
-
-		scanner := bufio.NewScanner(bytes.NewBuffer(fBytes))
-
-		summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
-		if err != nil {
-			return "", fmt.Errorf("failed to get summary and description: %w", err)
-		}
-	case (stat.Mode() & os.ModeCharDevice) != 0:
-		var err error
-		summary, description, err = CreateIssueSummaryDescription("")
-		if err != nil {
-			return "", fmt.Errorf("failed to get summary and description: %w", err)
-		}
-	case (stat.Mode() & os.ModeCharDevice) == 0:
-		in, err := readStdin()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		scanner := bufio.NewScanner(bytes.NewBuffer(in))
-		summary, description, err = BuildSummaryAndDescriptionFromScanner(scanner)
-		if err != nil {
-			return "", fmt.Errorf("failed to get summary and description: %w", err)
-		}
+	case projectFlag != "":
+		return projectFlag, nil
+	case projectFlag == "" && c.Config.DefaultProject != "":
+		return c.Config.DefaultProject, nil
+	default:
+		return "", errors.New("either \"defaultProject\" needs to be set in the config or \"--project\" needs to be passed")
 	}
-
-	issue, err := c.Client.CreateIssue(context.TODO(), jiwa.CreateIssueInput{
-		Project:     project,
-		Summary:     summary,
-		Description: description,
-		Labels:      nil,
-		Type:        "Task",
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to create issue: %w", err)
-	}
-
-	return issue.Key, nil
-}
-
-func (c *Command) Edit() (string, error) {
-	stat, _ := os.Stdin.Stat()
-
-	var ticketID string
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		in, err := readStdin()
-		if err != nil {
-			return "", fmt.Errorf("failed to read stdin: %w", err)
-		}
-
-		ticketID = StripBaseURL(string(in), c.Config.BaseURL)
-	} else {
-		if len(os.Args) != 3 {
-			fmt.Println("Usage: jiwa edit <issue ID>")
-			os.Exit(1)
-		}
-
-		ticketID = os.Args[2]
-	}
-
-	summary, description, err := GetIssueIntoEditor(c.Client, ticketID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get summary and description: %w", err)
-	}
-
-	err = c.Client.UpdateIssue(context.TODO(), jira.Issue{
-		Key: ticketID,
-		Fields: &jira.IssueFields{
-			Summary:     summary,
-			Description: description,
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to update issue: %w", err)
-	}
-
-	return ticketID, nil
 }
