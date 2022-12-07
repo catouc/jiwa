@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/catouc/jiwa/internal/commands"
@@ -14,15 +15,17 @@ import (
 )
 
 var (
-	create   = flag.NewFlagSet("create", flag.ContinueOnError)
-	edit     = flag.NewFlagSet("edit", flag.ContinueOnError)
-	list     = flag.NewFlagSet("list", flag.ContinueOnError)
-	move     = flag.NewFlagSet("move", flag.ContinueOnError)
-	reassign = flag.NewFlagSet("reassign", flag.ContinueOnError)
-	label    = flag.NewFlagSet("label", flag.ContinueOnError)
+	create    = flag.NewFlagSet("create", flag.ContinueOnError)
+	edit      = flag.NewFlagSet("edit", flag.ContinueOnError)
+	list      = flag.NewFlagSet("list", flag.ContinueOnError)
+	move      = flag.NewFlagSet("move", flag.ContinueOnError)
+	reassign  = flag.NewFlagSet("reassign", flag.ContinueOnError)
+	label     = flag.NewFlagSet("label", flag.ContinueOnError)
+	issueType = flag.NewFlagSet("issue-type", flag.ContinueOnError)
 
-	createProject = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
-	createIn      = create.StringP("in", "i", "", "Control from where the ticket is filled in, can be a file path or \"-\" for stdin")
+	createProject    = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
+	createIn         = create.StringP("in", "i", "", "Control from where the ticket is filled in, can be a file path or \"-\" for stdin")
+	createTicketType = create.StringP("ticket-type", "t", "Task", "Sets the type of ticket to open, defaults to \"Task\"")
 
 	listUser    = list.StringP("user", "u", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
 	listStatus  = list.StringP("status", "s", "to do", "Set the status of the tickets you want to see")
@@ -119,7 +122,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		key, err := cmd.Create(project, *createIn)
+		key, err := cmd.Create(project, *createIn, *createTicketType)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -231,6 +234,21 @@ func main() {
 
 		for _, i := range issues {
 			fmt.Println(ConstructIssueURL(i, cmd.Config.BaseURL))
+		}
+	case "issue-type":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: jiwa issue-type <project-key>")
+			os.Exit(1)
+		}
+
+		project, err := c.GetProject(context.TODO(), os.Args[2])
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for _, it := range project.IssueTypes {
+			fmt.Println(it.Name)
 		}
 	}
 }

@@ -248,3 +248,18 @@ func (c *Client) TransitionIssue(ctx context.Context, key string, status string)
 
 	return nil
 }
+
+func (c *Client) GetProject(ctx context.Context, key string) (jira.Project, error) {
+	b, err := c.callAPI(ctx, http.MethodGet, "project/"+key, nil, nil)
+	if err != nil {
+		return jira.Project{}, fmt.Errorf("failed to get project %s: %w", key, err)
+	}
+
+	var result jira.Project
+	err = json.Unmarshal(b, &result)
+	if err != nil {
+		return jira.Project{}, fmt.Errorf("failed to unmarshal project response: %w", err)
+	}
+
+	return result, nil
+}
