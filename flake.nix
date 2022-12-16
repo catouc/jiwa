@@ -12,7 +12,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         build = pkgs.buildGoModule {
           pname = "jiwa";
-          version = "v0.9.0";
+          version = "v0.10.0";
           modSha256 = pkgs.lib.fakeSha256;
           vendorSha256 = null;
           src = ./.;
