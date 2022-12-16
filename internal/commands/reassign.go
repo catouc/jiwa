@@ -32,7 +32,6 @@ func (c *Command) Reassign() ([]string, error) {
 			return nil, fmt.Errorf("failed to read tickets from stdin: %w", err)
 		}
 
-		ticketID = append(ticketID, StripBaseURL(string(in), c.Config.BaseURL))
 		user = os.Args[2]
 	} else {
 		if len(os.Args) != 4 {
