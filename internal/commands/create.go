@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func (c *Command) Create(project string, srcFilePath string, ticketType string) (string, error) {
+func (c *Command) Create(project, srcFilePath, ticketType, component string) (string, error) {
 	stat, _ := os.Stdin.Stat()
 
 	var summary, description string
@@ -53,6 +53,7 @@ func (c *Command) Create(project string, srcFilePath string, ticketType string) 
 		Description: description,
 		Labels:      nil,
 		Type:        ticketType,
+		Component:   component,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create issue: %w", err)
