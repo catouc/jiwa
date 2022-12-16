@@ -32,6 +32,7 @@ var (
 	listStatus  = list.StringP("status", "s", "to do", "Set the status of the tickets you want to see")
 	listProject = list.StringP("project", "p", "", "Set the project to search in")
 	listOut     = list.StringP("output", "o", "raw", "Set the output to be either \"raw\" for piping or \"table\" for nice formatting")
+	listLabels  = list.StringArrayP("labels", "l", nil, "Search for specific labels, all labels are joined by an OR")
 )
 
 var cfg commands.Config
@@ -144,7 +145,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		issues, err := cmd.List(*listUser, *listProject, *listStatus)
+		issues, err := cmd.List(*listUser, *listProject, *listStatus, *listLabels)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -173,7 +174,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		issues, err := cmd.List(*listUser, *listProject, *listStatus)
+		issues, err := cmd.List(*listUser, *listProject, *listStatus, *listLabels)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
