@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/catouc/jiwa/internal/commands"
@@ -236,18 +235,13 @@ func main() {
 			fmt.Println(ConstructIssueURL(i, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
 		}
 	case "issue-type":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: jiwa issue-type <project-key>")
-			os.Exit(1)
-		}
-
-		project, err := c.GetProject(context.TODO(), os.Args[2])
+		issueTypes, err := cmd.IssueTypes()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		for _, it := range project.IssueTypes {
+		for _, it := range issueTypes {
 			fmt.Println(it.Name)
 		}
 	}
