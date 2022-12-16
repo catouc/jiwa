@@ -24,7 +24,7 @@ var (
 	issueType = flag.NewFlagSet("issue-type", flag.ContinueOnError)
 
 	createProject    = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
-	createIn         = create.StringP("in", "i", "", "Control from where the ticket is filled in, can be a file path or \"-\" for stdin")
+	createFile       = create.StringP("file", "f", "", "Point to a file that contains your ticket")
 	createTicketType = create.StringP("ticket-type", "t", "Task", "Sets the type of ticket to open, defaults to \"Task\"")
 
 	listUser    = list.StringP("user", "u", "", "Set the user name to use in the list call, use \"empty\" to list unassigned tickets")
@@ -122,7 +122,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		key, err := cmd.Create(project, *createIn, *createTicketType)
+		key, err := cmd.Create(project, *createFile, *createTicketType)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
