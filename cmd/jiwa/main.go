@@ -22,6 +22,7 @@ var (
 	label     = flag.NewFlagSet("label", flag.ContinueOnError)
 	issueType = flag.NewFlagSet("issue-type", flag.ContinueOnError)
 	cat       = flag.NewFlagSet("cat", flag.ContinueOnError)
+	search    = flag.NewFlagSet("search", flag.ContinueOnError)
 
 	createProject    = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
 	createFile       = create.StringP("file", "f", "", "Point to a file that contains your ticket")
@@ -262,6 +263,22 @@ func main() {
 		}
 
 		fmt.Println(issueString)
+	case "search":
+		err := search.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa search \"<jql query>\"")
+			os.Exit(1)
+		}
+
+		issues, err := cmd.Search()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for _, i := range issues {
+			fmt.Println(ConstructIssueURL(i.Key, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+		}
 	}
 }
 
