@@ -101,7 +101,7 @@ func main() {
 		Username:   cfg.Username,
 		Password:   cfg.Password,
 		Token:      cfg.Token,
-		BaseURL:    cfg.BaseURL + cfg.EndpointPrefix,
+		BaseURL:    cfg.BaseURL + "/" + cfg.ReturnCleanEndpointPrefix(),
 		APIVersion: cfg.APIVersion,
 		HTTPClient: httpClient,
 	}

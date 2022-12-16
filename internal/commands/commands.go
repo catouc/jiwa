@@ -42,6 +42,14 @@ func (c *Config) IsValid() bool {
 	}
 }
 
+func (c *Config) ReturnCleanEndpointPrefix() string {
+	if c.EndpointPrefix != "" && strings.HasPrefix(c.EndpointPrefix, "/") {
+		c.EndpointPrefix = strings.TrimPrefix(c.EndpointPrefix, "/")
+	}
+
+	return c.EndpointPrefix
+}
+
 func CreateIssueSummaryDescription(prefill string) (string, string, error) {
 	scanner, cleanup, err := editor.SetupTmpFileWithEditor(prefill)
 	if err != nil {
