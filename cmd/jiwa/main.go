@@ -21,6 +21,7 @@ var (
 	reassign  = flag.NewFlagSet("reassign", flag.ContinueOnError)
 	label     = flag.NewFlagSet("label", flag.ContinueOnError)
 	issueType = flag.NewFlagSet("issue-type", flag.ContinueOnError)
+	cat       = flag.NewFlagSet("cat", flag.ContinueOnError)
 
 	createProject    = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
 	createFile       = create.StringP("file", "f", "", "Point to a file that contains your ticket")
@@ -244,6 +245,21 @@ func main() {
 		for _, it := range issueTypes {
 			fmt.Println(it.Name)
 		}
+	case "cat":
+		err := cat.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa cat <issue-id>")
+			fmt.Println("echo \"<issue-id>\" | jiwa cat <issue-id>")
+			os.Exit(1)
+		}
+
+		issueString, err := cmd.Cat()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println(issueString)
 	}
 }
 
