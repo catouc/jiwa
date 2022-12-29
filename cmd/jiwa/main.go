@@ -34,6 +34,8 @@ var (
 	listProject = list.StringP("project", "p", "", "Set the project to search in")
 	listOut     = list.StringP("output", "o", "raw", "Set the output to be either \"raw\" for piping or \"table\" for nice formatting")
 	listLabels  = list.StringArrayP("labels", "l", nil, "Search for specific labels, all labels are joined by an OR")
+
+	catComments = cat.BoolP("comments", "c", false, "Toggle to include comments in the printout or not")
 )
 
 var cfg commands.Config
@@ -256,13 +258,34 @@ func main() {
 			os.Exit(1)
 		}
 
-		issueString, err := cmd.Cat()
+		stat, _ := os.Stdin.Stat()
+
+		var issueID string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			in, err := commands.ReadStdin()
+			if err != nil {
+				fmt.Printf("failed to read stdin: %s\n", err)
+				os.Exit(1)
+			}
+
+			issueID = commands.StripBaseURL(string(in), cmd.Config.BaseURL)
+		} else {
+			issueID = cat.Arg(0)
+		}
+
+		issue, err := cmd.Cat(issueID)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		fmt.Println(issueString)
+		fmt.Println(issue.Fields.Summary+"\n"+issue.Fields.Description, nil)
+
+		if *catComments {
+			for _, comment := range issue.Fields.Comments.Comments {
+				fmt.Printf("%s wrote on %s:\n%s\n", comment.Author.Name, comment.Created, comment.Body)
+			}
+		}
 	case "search":
 		err := search.Parse(os.Args[2:])
 		if err != nil {
