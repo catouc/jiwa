@@ -113,6 +113,8 @@ func main() {
 
 	cmd := commands.Command{Client: c, Config: cfg}
 
+	stat, _ := os.Stdin.Stat()
+
 	switch os.Args[1] {
 	case "create":
 		err := create.Parse(os.Args[2:])
@@ -135,11 +137,37 @@ func main() {
 
 		fmt.Println(ConstructIssueURL(key, cfg.BaseURL, cfg.ReturnCleanEndpointPrefix()))
 	case "edit":
-		key, err := cmd.Edit()
+		err := edit.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa edit <issue-id>")
+			fmt.Println("echo \"<issue-id>\" | jiwa edit")
+			os.Exit(1)
+		}
+
+		var issueID string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			in, err := commands.ReadStdin()
+			if err != nil {
+				fmt.Printf("failed to read stdin: %s\n", err)
+				os.Exit(1)
+			}
+
+			issueID = commands.StripBaseURL(string(in), cmd.Config.BaseURL)
+		} else {
+			if len(edit.Args()) == 0 {
+				fmt.Println("Usage: jiwa edit <issue ID>")
+				os.Exit(1)
+			}
+
+			issueID = edit.Arg(0)
+		}
+
+		key, err := cmd.Edit(issueID)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+
 		fmt.Println(ConstructIssueURL(key, cfg.BaseURL, cfg.ReturnCleanEndpointPrefix()))
 	case "list":
 		err := list.Parse(os.Args[2:])
@@ -199,49 +227,187 @@ func main() {
 		default:
 			fmt.Printf("Usage: jiwa ls --out [table|raw]")
 		}
-
 	case "move":
-		issues, err := cmd.Move()
+		err := move.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa move <issue-id> <status>")
+			fmt.Println("echo \"<issue-id>\" | jiwa move <status>")
+			os.Exit(1)
+		}
+
+		var status string
+		var issues []string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(move.Args()) == 0 {
+				fmt.Println("Usage: jiwa move <status>")
+				os.Exit(1)
+			}
+
+			issues, err = cmd.ReadIssueListFromStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			status = move.Arg(0)
+		} else {
+			if len(move.Args()) < 2 {
+				fmt.Println("Usage: jiwa move <issueID> <status>")
+				os.Exit(1)
+			}
+
+			issues = []string{move.Arg(0)}
+			status = move.Arg(1)
+		}
+
+		movedIssues, err := cmd.Move(issues, status)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		for _, i := range issues {
-			fmt.Println(ConstructIssueURL(i, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+		for _, issue := range movedIssues {
+			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
 		}
 	case "mv":
-		issues, err := cmd.Move()
+		err := move.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa mv <issue-id> <status>")
+			fmt.Println("echo \"<issue-id>\" | jiwa mv <status>")
+			os.Exit(1)
+		}
+
+		var status string
+		var issues []string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(move.Args()) == 0 {
+				fmt.Println("Usage: jiwa mv <status>")
+				os.Exit(1)
+			}
+
+			issues, err = cmd.ReadIssueListFromStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			status = move.Arg(0)
+		} else {
+			if len(move.Args()) < 2 {
+				fmt.Println("Usage: jiwa mv <issueID> <status>")
+				os.Exit(1)
+			}
+
+			issues = []string{move.Arg(0)}
+			status = move.Arg(1)
+		}
+
+		movedIssues, err := cmd.Move(issues, status)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		for _, i := range issues {
-			fmt.Println(ConstructIssueURL(i, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+		for _, issue := range movedIssues {
+			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
 		}
 	case "reassign":
-		issues, err := cmd.Reassign()
+		err := reassign.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa reassign <issue-id> <username>")
+			fmt.Println("echo \"<issue-id>\" | jiwa reassign <username>")
+			os.Exit(1)
+		}
+
+		var user string
+		var issues []string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(reassign.Args()) == 0 {
+				fmt.Println("Usage: jiwa reassign <username>")
+				os.Exit(1)
+			}
+
+			issues, err = cmd.ReadIssueListFromStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			user = reassign.Arg(0)
+		} else {
+			if len(reassign.Args()) < 2 {
+				fmt.Println("Usage: jiwa reassign <issue ID> <username>")
+				os.Exit(1)
+			}
+
+			issues = []string{reassign.Arg(0)}
+			user = reassign.Arg(1)
+		}
+
+		reassignedIssues, err := cmd.Reassign(issues, user)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		for _, i := range issues {
-			fmt.Println(ConstructIssueURL(i, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+		for _, issue := range reassignedIssues {
+			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
 		}
 	case "label":
-		issues, err := cmd.Label()
+		err := label.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa label <issue ID> <label> <label>...")
+			fmt.Println("echo \"<issue-id>\" | jiwa label <label> <label> ...")
+			os.Exit(1)
+		}
+
+		var labels []string
+		var issues []string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(label.Args()) == 0 {
+				fmt.Println("Usage: jiwa label <label> <label> ...")
+				os.Exit(1)
+			}
+
+			issues, err = cmd.ReadIssueListFromStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			labels = reassign.Args()
+		} else {
+			if len(reassign.Args()) < 2 {
+				fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
+				os.Exit(1)
+			}
+
+			issues = []string{label.Arg(0)}
+			labels = reassign.Args()[1:]
+		}
+
+		labelledIssues, err := cmd.Label(issues, labels)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		for _, i := range issues {
-			fmt.Println(ConstructIssueURL(i, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+		for _, issue := range labelledIssues {
+			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
 		}
 	case "issue-type":
-		issueTypes, err := cmd.IssueTypes()
+		err := issueType.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa issue-type <project-key>")
+			os.Exit(1)
+		}
+
+		if len(issueType.Args()) == 0 {
+			fmt.Println("jiwa issue-type <project-key>")
+			os.Exit(1)
+		}
+
+		issueTypes, err := cmd.IssueTypes(issueType.Arg(0))
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -257,8 +423,6 @@ func main() {
 			fmt.Println("echo \"<issue-id>\" | jiwa cat <issue-id>")
 			os.Exit(1)
 		}
-
-		stat, _ := os.Stdin.Stat()
 
 		var issueID string
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
@@ -293,7 +457,12 @@ func main() {
 			os.Exit(1)
 		}
 
-		issues, err := cmd.Search()
+		if len(search.Args()) == 0 {
+			fmt.Println("jiwa search \"<jql query>\"")
+			os.Exit(1)
+		}
+
+		issues, err := cmd.Search(search.Arg(0))
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

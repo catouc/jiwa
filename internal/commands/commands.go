@@ -125,7 +125,7 @@ func (c *Command) FishOutProject(projectFlag string) (string, error) {
 	}
 }
 
-func (c *Command) readIssueListFromStdin() ([]string, error) {
+func (c *Command) ReadIssueListFromStdin() ([]string, error) {
 	in, err := ReadStdin()
 	if err != nil {
 		return nil, err
