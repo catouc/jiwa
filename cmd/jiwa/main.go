@@ -287,7 +287,6 @@ func ConstructIssueURL(issueKey, baseURL, endpointPrefix string) string {
 	case "":
 		return fmt.Sprintf("%s/browse/%s", baseURL, issueKey)
 	default:
-		return fmt.Sprintf("%s/%s/browse/%s", endpointPrefix, baseURL, issueKey)
+		return fmt.Sprintf("%s/%s/browse/%s", baseURL, endpointPrefix, issueKey)
 	}
-
 }
