@@ -34,7 +34,7 @@ func (c *Command) Create(project, srcFilePath, ticketType, component string) (st
 			return "", fmt.Errorf("failed to get summary and description: %w", err)
 		}
 	case (stat.Mode() & os.ModeCharDevice) == 0:
-		in, err := readStdin()
+		in, err := ReadStdin()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

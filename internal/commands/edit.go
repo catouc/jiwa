@@ -12,7 +12,7 @@ func (c *Command) Edit() (string, error) {
 
 	var ticketID string
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		in, err := readStdin()
+		in, err := ReadStdin()
 		if err != nil {
 			return "", fmt.Errorf("failed to read stdin: %w", err)
 		}

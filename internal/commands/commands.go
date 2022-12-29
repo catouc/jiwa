@@ -93,7 +93,7 @@ func GetIssueIntoEditor(c jiwa.Client, key string) (string, string, error) {
 	return CreateIssueSummaryDescription(issue.Fields.Summary + "\n" + issue.Fields.Description)
 }
 
-func readStdin() ([]byte, error) {
+func ReadStdin() ([]byte, error) {
 	var buf []byte
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -126,7 +126,7 @@ func (c *Command) FishOutProject(projectFlag string) (string, error) {
 }
 
 func (c *Command) readIssueListFromStdin() ([]string, error) {
-	in, err := readStdin()
+	in, err := ReadStdin()
 	if err != nil {
 		return nil, err
 	}

@@ -19,7 +19,7 @@ func (c *Command) Reassign() ([]string, error) {
 			os.Exit(1)
 		}
 
-		in, err := readStdin()
+		in, err := ReadStdin()
 		if err != nil {
 			return nil, err
 		}
