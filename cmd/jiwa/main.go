@@ -33,7 +33,7 @@ var (
 	listStatus  = list.StringP("status", "s", "to do", "Set the status of the tickets you want to see")
 	listProject = list.StringP("project", "p", "", "Set the project to search in")
 	listOut     = list.StringP("output", "o", "raw", "Set the output to be either \"raw\" for piping or \"table\" for nice formatting")
-	listLabels  = list.StringArrayP("labels", "l", nil, "Search for specific labels, all labels are joined by an OR")
+	listLabels  = list.StringArrayP("label", "l", nil, "Search for specific labels, all labels are joined by an OR")
 
 	catComments = cat.BoolP("comments", "c", false, "Toggle to include comments in the printout or not")
 )
