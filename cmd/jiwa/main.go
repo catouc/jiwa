@@ -172,7 +172,7 @@ func main() {
 	case "list":
 		err := list.Parse(os.Args[2:])
 		if err != nil {
-			fmt.Println("Usage: jiwa ls [-user|-status]")
+			fmt.Println("Usage: jiwa list [--user|--status|--project|--label]")
 			os.Exit(1)
 		}
 
@@ -201,7 +201,7 @@ func main() {
 	case "ls":
 		err := list.Parse(os.Args[2:])
 		if err != nil {
-			fmt.Println("Usage: jiwa ls [-user|-status]")
+			fmt.Println("Usage: jiwa ls [--user|--status|--project|--label]")
 			os.Exit(1)
 		}
 
