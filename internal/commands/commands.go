@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"github.com/catouc/jiwa/internal/editor"
 	"github.com/catouc/jiwa/internal/jiwa"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -110,8 +112,19 @@ func ReadStdin() ([]byte, error) {
 	return buf, nil
 }
 
-func StripBaseURL(url, baseURL string) string {
-	return strings.TrimPrefix(strings.TrimSpace(url), baseURL+"/browse/")
+func (c *Command) StripBaseURL(url string) string {
+	issueRegEx, _ := regexp.Compile("^[A-Z]*-[0-9]*$")
+
+	if issueRegEx.MatchString(url) {
+		return url
+	}
+
+	urlSplit := strings.Split(url, "/browse/")
+	if len(urlSplit) != 2 {
+		return ""
+	}
+
+	return urlSplit[1]
 }
 
 func (c *Command) FishOutProject(projectFlag string) (string, error) {
@@ -141,4 +154,15 @@ func (c *Command) ReadIssueListFromStdin() ([]string, error) {
 	}
 
 	return issues, nil
+}
+
+func (c *Command) ConstructIssueURL(issueKey string) (string, error) {
+	// this cannot ever fail to compile? Unless I'm mistaken here...
+	issueRegEx, _ := regexp.Compile("^[A-Z]*-[0-9]*$")
+
+	if !issueRegEx.MatchString(issueKey) {
+		return "", errors.New("issueKey must match `^[A-Z]*-[0-9]*$`")
+	}
+
+	return url.JoinPath(c.Config.BaseURL, c.Config.EndpointPrefix, "browse", issueKey)
 }
