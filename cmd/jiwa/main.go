@@ -144,25 +144,23 @@ func main() {
 			os.Exit(1)
 		}
 
-		var issueID string
+		var issues []string
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			in, err := commands.ReadStdin()
+			issues, err = cmd.ReadIssueListFromStdin()
 			if err != nil {
-				fmt.Printf("failed to read stdin: %s\n", err)
+				fmt.Println(err)
 				os.Exit(1)
 			}
-
-			issueID = commands.StripBaseURL(string(in), cmd.Config.BaseURL)
 		} else {
 			if len(edit.Args()) == 0 {
 				fmt.Println("Usage: jiwa edit <issue ID>")
 				os.Exit(1)
 			}
 
-			issueID = edit.Arg(0)
+			issues = []string{cmd.StripBaseURL(edit.Arg(0))}
 		}
 
-		key, err := cmd.Edit(issueID)
+		key, err := cmd.Edit(issues[0])
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -428,24 +426,23 @@ func main() {
 			os.Exit(1)
 		}
 
-		var issueID string
+		var issues []string
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			in, err := commands.ReadStdin()
+			issues, err = cmd.ReadIssueListFromStdin()
 			if err != nil {
-				fmt.Printf("failed to read stdin: %s\n", err)
+				fmt.Println(err)
 				os.Exit(1)
 			}
-
-			issueID = commands.StripBaseURL(string(in), cmd.Config.BaseURL)
 		} else {
 			if len(cat.Args()) == 0 {
 				fmt.Println("Usage: jiwa cat <issue-id>")
 				os.Exit(1)
 			}
-			issueID = cat.Arg(0)
+
+			issues = []string{cmd.StripBaseURL(cat.Arg(0))}
 		}
 
-		issue, err := cmd.Cat(issueID)
+		issue, err := cmd.Cat(issues[0])
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
