@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/catouc/jiwa/internal/editor"
 	"github.com/catouc/jiwa/internal/jiwa"
+	flag "github.com/spf13/pflag"
 	"net/url"
 	"os"
 	"regexp"
@@ -170,4 +171,41 @@ func (c *Command) ConstructIssueURL(issueKey string) string {
 	}
 
 	return path
+}
+
+// GetIssuesAndArgsFromFlagSet reads a flag set and standardises the help outputs somewhat
+func (c *Command) GetIssuesAndArgsFromFlagSet(flagSet *flag.FlagSet, minArgsNormal, minArgsStdin int, argHelp, stdinHelp string) ([]string, []string) {
+	stat, _ := os.Stdin.Stat()
+
+	err := flagSet.Parse(os.Args[2:])
+	if err != nil {
+		if stdinHelp != "" {
+			fmt.Println(stdinHelp)
+		}
+		fmt.Println(argHelp)
+		os.Exit(1)
+	}
+
+	var issues []string
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		if len(flagSet.Args()) <= minArgsStdin {
+			fmt.Println(stdinHelp)
+			return nil, nil
+		}
+
+		issues, err = c.ReadIssueListFromStdin()
+		if err != nil {
+			fmt.Println(err)
+			return nil, nil
+		}
+	} else {
+		if len(flagSet.Args()) <= minArgsNormal {
+			fmt.Println(argHelp)
+			return nil, nil
+		}
+
+		issues = []string{c.StripBaseURL(flagSet.Arg(0))}
+	}
+
+	return issues, flagSet.Args()[2:]
 }

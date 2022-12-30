@@ -137,28 +137,13 @@ func main() {
 
 		fmt.Println(cmd.ConstructIssueURL(key))
 	case "edit":
-		err := edit.Parse(os.Args[2:])
-		if err != nil {
-			fmt.Println("jiwa edit <issue-id>")
-			fmt.Println("echo \"<issue-id>\" | jiwa edit")
-			os.Exit(1)
-		}
-
-		var issues []string
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			issues, err = cmd.ReadIssueListFromStdin()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		} else {
-			if len(edit.Args()) == 0 {
-				fmt.Println("Usage: jiwa edit <issue ID>")
-				os.Exit(1)
-			}
-
-			issues = []string{cmd.StripBaseURL(edit.Arg(0))}
-		}
+		issues, _ := cmd.GetIssuesAndArgsFromFlagSet(
+			edit,
+			1,
+			0,
+			"jiwa edit <issue ID>",
+			"echo \"<issue-id>\" | jiwa edit",
+		)
 
 		key, err := cmd.Edit(issues[0])
 		if err != nil {
