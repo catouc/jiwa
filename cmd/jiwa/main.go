@@ -135,7 +135,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Println(ConstructIssueURL(key, cfg.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+		fmt.Println(cmd.ConstructIssueURL(key))
 	case "edit":
 		err := edit.Parse(os.Args[2:])
 		if err != nil {
@@ -168,7 +168,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Println(ConstructIssueURL(key, cfg.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+		fmt.Println(cmd.ConstructIssueURL(key))
 	case "list":
 		err := list.Parse(os.Args[2:])
 		if err != nil {
@@ -185,7 +185,7 @@ func main() {
 		switch *listOut {
 		case "raw":
 			for _, i := range issues {
-				fmt.Println(ConstructIssueURL(i.Key, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+				fmt.Println(cmd.ConstructIssueURL(i.Key))
 			}
 		case "table":
 			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
@@ -214,13 +214,17 @@ func main() {
 		switch *listOut {
 		case "raw":
 			for _, i := range issues {
-				fmt.Println(ConstructIssueURL(i.Key, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+				fmt.Println(cmd.ConstructIssueURL(i.Key))
 			}
 		case "table":
 			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
 			fmt.Fprintf(w, "ID\tSummary\tURL\n")
 			for _, i := range issues {
-				issueURL := ConstructIssueURL(i.Key, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix())
+				issueURL, err := cmd.ConstructIssueURL(i.Key)
+				if err != nil {
+					fmt.Printf("failed to construct issue URL: %s\n", err)
+					os.Exit(1)
+				}
 				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
 			}
 			w.Flush()
@@ -267,7 +271,7 @@ func main() {
 		}
 
 		for _, issue := range movedIssues {
-			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+			fmt.Println(cmd.ConstructIssueURL(issue))
 		}
 	case "mv":
 		err := move.Parse(os.Args[2:])
@@ -309,7 +313,7 @@ func main() {
 		}
 
 		for _, issue := range movedIssues {
-			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+			fmt.Println(cmd.ConstructIssueURL(issue))
 		}
 	case "reassign":
 		err := reassign.Parse(os.Args[2:])
@@ -351,7 +355,7 @@ func main() {
 		}
 
 		for _, issue := range reassignedIssues {
-			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+			fmt.Println(cmd.ConstructIssueURL(issue))
 		}
 	case "label":
 		err := label.Parse(os.Args[2:])
@@ -393,7 +397,7 @@ func main() {
 		}
 
 		for _, issue := range labelledIssues {
-			fmt.Println(ConstructIssueURL(issue, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+			fmt.Println(cmd.ConstructIssueURL(issue))
 		}
 	case "issue-type":
 		err := issueType.Parse(os.Args[2:])
@@ -473,16 +477,7 @@ func main() {
 		}
 
 		for _, i := range issues {
-			fmt.Println(ConstructIssueURL(i.Key, cmd.Config.BaseURL, cfg.ReturnCleanEndpointPrefix()))
+			fmt.Println(cmd.ConstructIssueURL(i.Key))
 		}
-	}
-}
-
-func ConstructIssueURL(issueKey, baseURL, endpointPrefix string) string {
-	switch endpointPrefix {
-	case "":
-		return fmt.Sprintf("%s/browse/%s", baseURL, issueKey)
-	default:
-		return fmt.Sprintf("%s/%s/browse/%s", baseURL, endpointPrefix, issueKey)
 	}
 }
