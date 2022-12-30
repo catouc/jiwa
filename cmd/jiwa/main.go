@@ -189,8 +189,7 @@ func main() {
 			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
 			fmt.Fprintf(w, "ID\tSummary\tURL\n")
 			for _, i := range issues {
-				issueURL := fmt.Sprintf("%s/browse/%s", c.BaseURL, i.Key)
-				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
+				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, cmd.ConstructIssueURL(i.Key))
 			}
 			w.Flush()
 		default:
@@ -218,12 +217,7 @@ func main() {
 			w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', tabwriter.AlignRight)
 			fmt.Fprintf(w, "ID\tSummary\tURL\n")
 			for _, i := range issues {
-				issueURL, err := cmd.ConstructIssueURL(i.Key)
-				if err != nil {
-					fmt.Printf("failed to construct issue URL: %s\n", err)
-					os.Exit(1)
-				}
-				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, issueURL)
+				fmt.Fprintf(w, "%s\t%s\t%s\n", i.Key, i.Fields.Summary, cmd.ConstructIssueURL(i.Key))
 			}
 			w.Flush()
 		default:

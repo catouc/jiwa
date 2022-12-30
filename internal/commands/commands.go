@@ -156,13 +156,18 @@ func (c *Command) ReadIssueListFromStdin() ([]string, error) {
 	return issues, nil
 }
 
-func (c *Command) ConstructIssueURL(issueKey string) (string, error) {
+func (c *Command) ConstructIssueURL(issueKey string) string {
 	// this cannot ever fail to compile? Unless I'm mistaken here...
 	issueRegEx, _ := regexp.Compile("^[A-Z]*-[0-9]*$")
 
 	if !issueRegEx.MatchString(issueKey) {
-		return "", errors.New("issueKey must match `^[A-Z]*-[0-9]*$`")
+		return ""
 	}
 
-	return url.JoinPath(c.Config.BaseURL, c.Config.EndpointPrefix, "browse", issueKey)
+	path, err := url.JoinPath(c.Config.BaseURL, c.Config.EndpointPrefix, "browse", issueKey)
+	if err != nil {
+		return ""
+	}
+
+	return path
 }

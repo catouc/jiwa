@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"errors"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -12,7 +11,6 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 		InCommand  Command
 		InIssueKey string
 		OutString  string
-		OutErr     error
 	}{
 		{
 			Name: "HappyPathWithEndpointPrefix",
@@ -25,7 +23,6 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 			},
 			InIssueKey: "JIWA-001",
 			OutString:  "https://catouc.atlassian.net/jira/browse/JIWA-001",
-			OutErr:     nil,
 		},
 		{
 			Name: "HappyPath",
@@ -38,7 +35,6 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 			},
 			InIssueKey: "JIWA-001",
 			OutString:  "https://catouc.atlassian.net/browse/JIWA-001",
-			OutErr:     nil,
 		},
 		{
 			Name: "EmptyIssueKey",
@@ -51,7 +47,6 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 			},
 			InIssueKey: "",
 			OutString:  "",
-			OutErr:     errors.New("issueKey must match `^[A-Z]*-[0-9]*$`"),
 		},
 		{
 			Name: "EmptyIssueKeyWithEndpointPrefix",
@@ -64,7 +59,6 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 			},
 			InIssueKey: "",
 			OutString:  "",
-			OutErr:     errors.New("issueKey must match `^[A-Z]*-[0-9]*$`"),
 		},
 		{
 			Name: "InvalidIssueKey",
@@ -77,7 +71,6 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 			},
 			InIssueKey: "01Something",
 			OutString:  "",
-			OutErr:     errors.New("issueKey must match `^[A-Z]*-[0-9]*$`"),
 		},
 		{
 			Name: "InvalidIssueKeyWithEndpointPrefix",
@@ -90,20 +83,13 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 			},
 			InIssueKey: "01Something",
 			OutString:  "",
-			OutErr:     errors.New("issueKey must match `^[A-Z]*-[0-9]*$`"),
 		},
 	}
 
 	for _, td := range testData {
 		t.Run(td.Name, func(t *testing.T) {
 			t.Parallel()
-			result, err := td.InCommand.ConstructIssueURL(td.InIssueKey)
-
-			if td.OutErr == nil {
-				assert.Nil(t, err)
-			} else {
-				assert.Equal(t, td.OutErr.Error(), err.Error())
-			}
+			result := td.InCommand.ConstructIssueURL(td.InIssueKey)
 
 			assert.Equal(t, td.OutString, result)
 		})
