@@ -375,15 +375,15 @@ func main() {
 				os.Exit(1)
 			}
 
-			labels = reassign.Args()
+			labels = label.Args()
 		} else {
-			if len(reassign.Args()) < 2 {
+			if len(label.Args()) < 2 {
 				fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
 				os.Exit(1)
 			}
 
 			issues = []string{label.Arg(0)}
-			labels = reassign.Args()[1:]
+			labels = label.Args()[1:]
 		}
 
 		labelledIssues, err := cmd.Label(issues, labels)
