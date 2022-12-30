@@ -260,7 +260,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			issues = []string{move.Arg(0)}
+			issues = []string{cmd.StripBaseURL(move.Arg(0))}
 			status = move.Arg(1)
 		}
 
@@ -302,7 +302,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			issues = []string{move.Arg(0)}
+			issues = []string{cmd.StripBaseURL(move.Arg(0))}
 			status = move.Arg(1)
 		}
 
@@ -344,7 +344,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			issues = []string{reassign.Arg(0)}
+			issues = []string{cmd.StripBaseURL(reassign.Arg(0))}
 			user = reassign.Arg(1)
 		}
 
@@ -386,7 +386,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			issues = []string{label.Arg(0)}
+			issues = []string{cmd.StripBaseURL(label.Arg(0))}
 			labels = label.Args()[1:]
 		}
 

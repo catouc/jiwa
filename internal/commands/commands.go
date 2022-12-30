@@ -147,7 +147,7 @@ func (c *Command) ReadIssueListFromStdin() ([]string, error) {
 	issues := make([]string, 0)
 	scanner := bufio.NewScanner(bytes.NewBuffer(in))
 	for scanner.Scan() {
-		issues = append(issues, StripBaseURL(scanner.Text(), c.Config.BaseURL))
+		issues = append(issues, c.StripBaseURL(scanner.Text()))
 	}
 	if scanner.Err() != nil {
 		return nil, fmt.Errorf("failed to read in all tickets: %w", err)
