@@ -434,6 +434,10 @@ func main() {
 
 			issueID = commands.StripBaseURL(string(in), cmd.Config.BaseURL)
 		} else {
+			if len(cat.Args()) == 0 {
+				fmt.Println("Usage: jiwa cat <issue-id>")
+				os.Exit(1)
+			}
 			issueID = cat.Arg(0)
 		}
 
