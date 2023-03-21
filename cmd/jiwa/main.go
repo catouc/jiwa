@@ -15,15 +15,17 @@ import (
 )
 
 var (
+	cat       = flag.NewFlagSet("cat", flag.ContinueOnError)
 	create    = flag.NewFlagSet("create", flag.ContinueOnError)
 	edit      = flag.NewFlagSet("edit", flag.ContinueOnError)
+	issueType = flag.NewFlagSet("issue-type", flag.ContinueOnError)
+	label     = flag.NewFlagSet("label", flag.ContinueOnError)
 	list      = flag.NewFlagSet("list", flag.ContinueOnError)
 	move      = flag.NewFlagSet("move", flag.ContinueOnError)
 	reassign  = flag.NewFlagSet("reassign", flag.ContinueOnError)
-	label     = flag.NewFlagSet("label", flag.ContinueOnError)
-	issueType = flag.NewFlagSet("issue-type", flag.ContinueOnError)
-	cat       = flag.NewFlagSet("cat", flag.ContinueOnError)
 	search    = flag.NewFlagSet("search", flag.ContinueOnError)
+	
+	catComments = cat.BoolP("comments", "c", false, "Toggle to include comments in the printout or not")
 
 	createProject    = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
 	createFile       = create.StringP("file", "f", "", "Point to a file that contains your ticket")
@@ -35,8 +37,6 @@ var (
 	listProject = list.StringP("project", "p", "", "Set the project to search in")
 	listOut     = list.StringP("output", "o", "raw", "Set the output to be either \"raw\" for piping or \"table\" for nice formatting")
 	listLabels  = list.StringArrayP("label", "l", nil, "Search for specific labels, all labels are joined by an OR")
-
-	catComments = cat.BoolP("comments", "c", false, "Toggle to include comments in the printout or not")
 )
 
 var cfg commands.Config
@@ -117,6 +117,43 @@ func main() {
 	stat, _ := os.Stdin.Stat()
 
 	switch os.Args[1] {
+	case "cat":
+		err := cat.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa cat <issue-id>")
+			fmt.Println("echo \"<issue-id>\" | jiwa cat <issue-id>")
+			os.Exit(1)
+		}
+
+		var issues []string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			issues, err = cmd.ReadIssueListFromStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		} else {
+			if len(cat.Args()) == 0 {
+				fmt.Println("Usage: jiwa cat <issue-id>")
+				os.Exit(1)
+			}
+
+			issues = []string{cmd.StripBaseURL(cat.Arg(0))}
+		}
+
+		issue, err := cmd.Cat(issues[0])
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println(issue.Fields.Summary+"\n"+issue.Fields.Description, nil)
+
+		if *catComments {
+			for _, comment := range issue.Fields.Comments.Comments {
+				fmt.Printf("%s wrote on %s:\n%s\n", comment.Author.Name, comment.Created, comment.Body)
+			}
+		}
 	case "create":
 		err := create.Parse(os.Args[2:])
 		if err != nil {
@@ -168,6 +205,69 @@ func main() {
 		}
 
 		fmt.Println(cmd.ConstructIssueURL(key))
+	case "issue-type":
+		err := issueType.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa issue-type <project-key>")
+			os.Exit(1)
+		}
+
+		if len(issueType.Args()) == 0 {
+			fmt.Println("jiwa issue-type <project-key>")
+			os.Exit(1)
+		}
+
+		issueTypes, err := cmd.IssueTypes(issueType.Arg(0))
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for _, it := range issueTypes {
+			fmt.Println(it.Name)
+		}
+	case "label":
+		err := label.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("jiwa label <issue ID> <label> <label>...")
+			fmt.Println("echo \"<issue-id>\" | jiwa label <label> <label> ...")
+			os.Exit(1)
+		}
+
+		var labels []string
+		var issues []string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(label.Args()) == 0 {
+				fmt.Println("Usage: jiwa label <label> <label> ...")
+				os.Exit(1)
+			}
+
+			issues, err = cmd.ReadIssueListFromStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			labels = label.Args()
+		} else {
+			if len(label.Args()) < 2 {
+				fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
+				os.Exit(1)
+			}
+
+			issues = []string{cmd.StripBaseURL(label.Arg(0))}
+			labels = label.Args()[1:]
+		}
+
+		labelledIssues, err := cmd.Label(issues, labels)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for _, issue := range labelledIssues {
+			fmt.Println(cmd.ConstructIssueURL(issue))
+		}
 	case "list":
 		err := list.Parse(os.Args[2:])
 		if err != nil {
@@ -349,106 +449,6 @@ func main() {
 
 		for _, issue := range reassignedIssues {
 			fmt.Println(cmd.ConstructIssueURL(issue))
-		}
-	case "label":
-		err := label.Parse(os.Args[2:])
-		if err != nil {
-			fmt.Println("jiwa label <issue ID> <label> <label>...")
-			fmt.Println("echo \"<issue-id>\" | jiwa label <label> <label> ...")
-			os.Exit(1)
-		}
-
-		var labels []string
-		var issues []string
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			if len(label.Args()) == 0 {
-				fmt.Println("Usage: jiwa label <label> <label> ...")
-				os.Exit(1)
-			}
-
-			issues, err = cmd.ReadIssueListFromStdin()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			labels = label.Args()
-		} else {
-			if len(label.Args()) < 2 {
-				fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
-				os.Exit(1)
-			}
-
-			issues = []string{cmd.StripBaseURL(label.Arg(0))}
-			labels = label.Args()[1:]
-		}
-
-		labelledIssues, err := cmd.Label(issues, labels)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		for _, issue := range labelledIssues {
-			fmt.Println(cmd.ConstructIssueURL(issue))
-		}
-	case "issue-type":
-		err := issueType.Parse(os.Args[2:])
-		if err != nil {
-			fmt.Println("jiwa issue-type <project-key>")
-			os.Exit(1)
-		}
-
-		if len(issueType.Args()) == 0 {
-			fmt.Println("jiwa issue-type <project-key>")
-			os.Exit(1)
-		}
-
-		issueTypes, err := cmd.IssueTypes(issueType.Arg(0))
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		for _, it := range issueTypes {
-			fmt.Println(it.Name)
-		}
-	case "cat":
-		err := cat.Parse(os.Args[2:])
-		if err != nil {
-			fmt.Println("jiwa cat <issue-id>")
-			fmt.Println("echo \"<issue-id>\" | jiwa cat <issue-id>")
-			os.Exit(1)
-		}
-
-		var issues []string
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			issues, err = cmd.ReadIssueListFromStdin()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		} else {
-			if len(cat.Args()) == 0 {
-				fmt.Println("Usage: jiwa cat <issue-id>")
-				os.Exit(1)
-			}
-
-			issues = []string{cmd.StripBaseURL(cat.Arg(0))}
-		}
-
-		issue, err := cmd.Cat(issues[0])
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println(issue.Fields.Summary+"\n"+issue.Fields.Description, nil)
-
-		if *catComments {
-			for _, comment := range issue.Fields.Comments.Comments {
-				fmt.Printf("%s wrote on %s:\n%s\n", comment.Author.Name, comment.Created, comment.Body)
-			}
 		}
 	case "search":
 		err := search.Parse(os.Args[2:])
