@@ -16,6 +16,7 @@ import (
 
 var (
 	cat       = flag.NewFlagSet("cat", flag.ContinueOnError)
+	comment   = flag.NewFlagSet("comment", flag.ContinueOnError)
 	create    = flag.NewFlagSet("create", flag.ContinueOnError)
 	edit      = flag.NewFlagSet("edit", flag.ContinueOnError)
 	issueType = flag.NewFlagSet("issue-type", flag.ContinueOnError)
@@ -24,7 +25,7 @@ var (
 	move      = flag.NewFlagSet("move", flag.ContinueOnError)
 	reassign  = flag.NewFlagSet("reassign", flag.ContinueOnError)
 	search    = flag.NewFlagSet("search", flag.ContinueOnError)
-	
+
 	catComments = cat.BoolP("comments", "c", false, "Toggle to include comments in the printout or not")
 
 	createProject    = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
@@ -93,7 +94,7 @@ The configuration file is located at %s
 	}
 
 	if len(os.Args) < 2 {
-		fmt.Printf("Usage: jiwa {create|edit|ls|mv|reassign}\n")
+		fmt.Printf("Usage: jiwa {cat|comment|create|edit|issueType||label|list|move|reassign|search}\n")
 		os.Exit(1)
 	}
 
@@ -153,6 +154,43 @@ func main() {
 			for _, comment := range issue.Fields.Comments.Comments {
 				fmt.Printf("%s wrote on %s:\n%s\n", comment.Author.Name, comment.Created, comment.Body)
 			}
+		}
+	case "comment":
+		err := comment.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println("Usage: jiwa comment <issue-id> <comment>")
+			fmt.Println("echo \"<issue-id>\" | jiwa comment <comment>")
+			os.Exit(1)
+		}
+
+		var issues []string
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			if len(comment.Args()) == 0 {
+				fmt.Println("echo \"<issue-id>\" | jiwa comment <comment>")
+				os.Exit(1)
+			}
+			issues, err = cmd.ReadIssueListFromStdin()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		} else {
+			if len(comment.Args()) < 2 {
+				fmt.Println("Usage: jiwa comment <issue-id> <comment>")
+				os.Exit(1)
+			}
+
+			issues = []string{cmd.StripBaseURL(comment.Arg(0))}
+		}
+
+		commentedIssues, err := cmd.Comment(issues, comment.Arg(1))
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for _, issue := range commentedIssues {
+			fmt.Println(cmd.ConstructIssueURL(issue))
 		}
 	case "create":
 		err := create.Parse(os.Args[2:])

@@ -264,3 +264,22 @@ func (c *Client) GetProject(ctx context.Context, key string) (jira.Project, erro
 
 	return result, nil
 }
+
+func (c *Client) CommentOnIssue(ctx context.Context, issueID string, comment string) error {
+	bodyStruct := struct {
+		Body string `json:"body"`
+	}{
+		Body: comment,
+	}
+	body, err := json.Marshal(&bodyStruct)
+	if err != nil {
+		return fmt.Errorf("failed to marshal comment body: %w", err)
+	}
+
+	_, err = c.callAPI(ctx, http.MethodPost, "issue/"+issueID+"/comment", nil, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("failed comment on issue %s: %w", issueID, err)
+	}
+
+	return nil
+}
