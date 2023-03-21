@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCommand_ConstructIssueURL(t *testing.T) {

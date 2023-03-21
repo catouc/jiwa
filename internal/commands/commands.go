@@ -6,13 +6,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/catouc/jiwa/internal/editor"
-	"github.com/catouc/jiwa/internal/jiwa"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/catouc/jiwa/internal/editor"
+	"github.com/catouc/jiwa/internal/jiwa"
 )
 
 type Command struct {

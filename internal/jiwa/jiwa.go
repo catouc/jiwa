@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/andygrunwald/go-jira"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/andygrunwald/go-jira"
 )
 
 type Client struct {

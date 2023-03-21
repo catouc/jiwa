@@ -5,8 +5,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/catouc/jiwa/internal/jiwa"
 	"os"
+
+	"github.com/catouc/jiwa/internal/jiwa"
 )
 
 func (c *Command) Create(project, srcFilePath, ticketType, component string) (string, error) {

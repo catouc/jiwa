@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+
 	"github.com/andygrunwald/go-jira"
 )
 

@@ -3,8 +3,9 @@ package commands
 import (
 	"context"
 	"fmt"
-	"github.com/andygrunwald/go-jira"
 	"strings"
+
+	"github.com/andygrunwald/go-jira"
 )
 
 func (c *Command) List(userFlag, projectFlag, statusFlag string, labels []string) ([]jira.Issue, error) {
