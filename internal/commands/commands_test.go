@@ -88,6 +88,7 @@ func TestCommand_ConstructIssueURL(t *testing.T) {
 	}
 
 	for _, td := range testData {
+		td := td
 		t.Run(td.Name, func(t *testing.T) {
 			t.Parallel()
 			result := td.InCommand.ConstructIssueURL(td.InIssueKey)
@@ -167,6 +168,7 @@ func TestCommand_StripBaseURL(t *testing.T) {
 	}
 
 	for _, td := range testData {
+		td := td
 		t.Run(td.Name, func(t *testing.T) {
 			t.Parallel()
 			result := td.InCommand.StripBaseURL(td.InURL)
