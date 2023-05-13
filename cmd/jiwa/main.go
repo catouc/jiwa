@@ -314,7 +314,13 @@ func main() {
 			os.Exit(1)
 		}
 
-		issues, err := cmd.List(*listUser, *listProject, *listStatus, *listLabels)
+		listInput := commands.ListInput{
+			Assignee: *listUser,
+			Project:  *listProject,
+			Status:   *listStatus,
+			Labels:   *listLabels,
+		}
+		issues, err := cmd.List(listInput)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -342,7 +348,13 @@ func main() {
 			os.Exit(1)
 		}
 
-		issues, err := cmd.List(*listUser, *listProject, *listStatus, *listLabels)
+		listInput := commands.ListInput{
+			Assignee: *listUser,
+			Project:  *listProject,
+			Status:   *listStatus,
+			Labels:   *listLabels,
+		}
+		issues, err := cmd.List(listInput)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

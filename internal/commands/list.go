@@ -8,28 +8,35 @@ import (
 	"github.com/andygrunwald/go-jira"
 )
 
-func (c *Command) List(userFlag, projectFlag, statusFlag string, labels []string) ([]jira.Issue, error) {
+type ListInput struct {
+	Assignee string
+	Project  string
+	Status   string
+	Labels   []string
+}
+
+func (c *Command) List(input ListInput) ([]jira.Issue, error) {
 	var user string
-	switch userFlag {
+	switch input.Assignee {
 	case "empty":
 		user = "AND assignee is EMPTY"
 	case "":
 		user = ""
 	default:
-		user = "AND assignee= \"" + userFlag + "\""
+		user = "AND assignee= \"" + input.Assignee + "\""
 	}
 
 	var labelsString string
-	if len(labels) != 0 {
-		labelsString = "AND labels in (" + strings.Join(labels, ",") + ")"
+	if len(input.Labels) != 0 {
+		labelsString = "AND labels in (" + strings.Join(input.Labels, ",") + ")"
 	}
 
 	project := c.Config.DefaultProject
-	if projectFlag != "" {
-		project = projectFlag
+	if input.Project != "" {
+		project = input.Project
 	}
 
-	jql := fmt.Sprintf("project=%s AND status=\"%s\" %s %s", project, statusFlag, user, labelsString)
+	jql := fmt.Sprintf("project=%s AND status=\"%s\" %s %s", project, input.Status, user, labelsString)
 	issues, err := c.Client.Search(context.TODO(), jql)
 	if err != nil {
 		return nil, fmt.Errorf("could not list issues: %w", err)
