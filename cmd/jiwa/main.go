@@ -28,7 +28,8 @@ var (
 
 	catComments = cat.BoolP("comments", "c", false, "Toggle to include comments in the printout or not")
 
-	createProject    = create.StringP("project", "p", "", "Set the project to create the ticket in, if not set it will default to your configured \"defaultProject\"")
+	createProject = create.StringP("project", "p", "", `Set the project to create the ticket in, if not set it will default to your
+configured "defaultProject"`)
 	createFile       = create.StringP("file", "f", "", "Point to a file that contains your ticket")
 	createTicketType = create.StringP("ticket-type", "t", "Task", "Sets the type of ticket to open, defaults to \"Task\"")
 	createComponent  = create.StringP("component", "c", "", "Set the component of your ticket")
