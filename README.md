@@ -45,3 +45,9 @@ If you instance has weird prefixes in the URLs you can use `endpointPrefix` like
 ```
 
 (until I get around to it that leading `/` is very important!).
+
+# Developing
+
+My own test instance is at https://catouc.atlassian.net/jira/software/projects/JIWA/boards/1
+The username is my atlassian account mail and I can generate an API token under https://id.atlassian.com/manage-profile/security/api-tokens
+The token needs to then be in `JIWA_PASSWORD` because OAuth1 is used where you jam that into the password field?
