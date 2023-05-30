@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/catouc/jiwa/internal/commands"
+	"github.com/catouc/jiwa/internal/editor"
 	"github.com/catouc/jiwa/internal/jiwa"
 	flag "github.com/spf13/pflag"
 )
@@ -165,26 +166,68 @@ func main() {
 		}
 
 		var issues []string
+		var commentStr string
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			if len(comment.Args()) == 0 {
+			if len(comment.Args()) > 1 {
 				fmt.Println("echo \"<issue-id>\" | jiwa comment <comment>")
+				fmt.Println("echo \"<issue-id>\" | jiwa comment (opens $EDITOR)")
 				os.Exit(1)
 			}
+
 			issues, err = cmd.ReadIssueListFromStdin()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
+
+			if len(comment.Args()) == 1 {
+				commentStr = comment.Arg(0)
+			} else {
+				scanner, cleanup, err := editor.SetupTmpFileWithEditor("")	
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)					
+				}
+				defer cleanup()
+
+				text, err := commands.BuildCommentFromScanner(scanner)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				commentStr = text
+			}
 		} else {
-			if len(comment.Args()) < 2 {
-				fmt.Println("Usage: jiwa comment <issue-id> <comment>")
-				os.Exit(1)
+
+			switch len(comment.Args()) {
+			case 0:
+				if len(comment.Args()) < 1 {
+					fmt.Println("Usage: jiwa comment <issue-id> <comment>")
+					fmt.Println("jiwa comment <issue-id> (opens $EDITOR)")
+					os.Exit(1)
+				}
+			case 1:
+				scanner, cleanup, err := editor.SetupTmpFileWithEditor("")	
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)					
+				}
+				defer cleanup()
+
+				text, err := commands.BuildCommentFromScanner(scanner)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				commentStr = text
+			case 2:
+				commentStr = comment.Arg(1)
 			}
 
 			issues = []string{cmd.StripBaseURL(comment.Arg(0))}
 		}
 
-		commentedIssues, err := cmd.Comment(issues, comment.Arg(1))
+		commentedIssues, err := cmd.Comment(issues, commentStr)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

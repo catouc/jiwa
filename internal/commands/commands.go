@@ -53,6 +53,20 @@ func (c *Config) ReturnCleanEndpointPrefix() string {
 	return c.EndpointPrefix
 }
 
+func BuildCommentFromScanner(scanner *bufio.Scanner) (string, error) {
+	commentBuilder := strings.Builder{}
+	for scanner.Scan() {
+		commentBuilder.WriteString(scanner.Text())
+		commentBuilder.WriteString("\n")
+	}
+	return commentBuilder.String(), scanner.Err()
+}
+
+// CreateIssueSummaryDescription takes care of creating an empty tmp file
+// and opening an editor on that, reading the result once the editor is closed
+// then shoving that into a title and a description.
+// SetupTmpFileWithEditor is what you're looking for to just get the file
+// thing.
 func CreateIssueSummaryDescription(prefill string) (string, string, error) {
 	scanner, cleanup, err := editor.SetupTmpFileWithEditor(prefill)
 	if err != nil {
