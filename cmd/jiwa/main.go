@@ -316,32 +316,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		var labels []string
-		var issues []string
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			if len(label.Args()) == 0 {
-				fmt.Println("Usage: jiwa label <label> <label> ...")
-				os.Exit(1)
-			}
-
-			issues, err = cmd.ReadIssueListFromStdin()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			labels = label.Args()
-		} else {
-			if len(label.Args()) < 2 {
-				fmt.Println("Usage: jiwa label <issue ID> <label> <label>...")
-				os.Exit(1)
-			}
-
-			issues = []string{cmd.StripBaseURL(label.Arg(0))}
-			labels = label.Args()[1:]
-		}
-
-		labelledIssues, err := cmd.Label(issues, labels)
+		labelledIssues, err := cmd.Label(stat.Mode() & os.ModeCharDevice != 0, label.Args())
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

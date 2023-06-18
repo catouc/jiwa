@@ -186,3 +186,32 @@ func (c *Command) ConstructIssueURL(issueKey string) string {
 
 	return path
 }
+
+type ErrCommand struct {
+	Msg string
+	Usage string
+}
+
+func (e ErrCommand) Error() string {
+	return e.Msg
+}
+
+func (c *Command) ParseInput(stdinEmpty bool, flagSet *flag.FlagSet, nrRequiredArgs int, usage string) ([]string, error){
+	var issues []string
+	var err error
+	switch {
+	case !stdinEmpty && len(flagSet.Args()) < nrRequiredArgs - 1:
+		return nil, ErrCommand{Msg: "to few args", Usage: usage}
+	case !stdinEmpty && len(flagSet.Args()) >= nrRequiredArgs - 1:
+		issues, err = c.ReadIssueListFromStdin()
+		if err != nil {
+			return nil, err
+		}
+	case stdinEmpty && len(flagSet.Args()) < nrRequiredArgs:
+		return nil, ErrCommand{Msg: "to few args", Usage: usage}
+	case stdinEmpty && len(flagSet.Args()) >= nrRequiredArgs:
+		issues = []string{c.StripBaseURL(flagSet.Arg(0))}
+	}
+
+	return issues, nil
+}
