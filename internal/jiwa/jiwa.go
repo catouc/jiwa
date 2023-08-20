@@ -283,3 +283,12 @@ func (c *Client) CommentOnIssue(ctx context.Context, issueID string, comment str
 
 	return nil
 }
+
+func (c *Client) DeleteIssue(ctx context.Context, issueID string) error {
+	_, err := c.callAPI(ctx, http.MethodDelete, "issue/"+issueID, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete issue %s: %w", issueID, err)
+	}
+
+	return nil
+}
