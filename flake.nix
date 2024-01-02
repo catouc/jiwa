@@ -36,7 +36,7 @@
           default = pkgs.mkShell {
             buildInputs = [
 	      pkgs.delve
-              pkgs.go_1_21
+              pkgs.go
               pkgs.gotools
             ];
           };
