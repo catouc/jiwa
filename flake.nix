@@ -14,7 +14,7 @@
           pname = "jiwa";
           version = "v0.13.1";
           modSha256 = pkgs.lib.fakeSha256;
-          vendorSha256 = null;
+          vendorHash = null;
           src = ./.;
 
           meta = {
