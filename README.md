@@ -21,6 +21,12 @@ Description that can be quite long
 and span multiple lines.
 ```
 
+# Installation
+
+```
+go install github.com/catouc/jiwa/cmd/jiwa@latest
+```
+
 # Configuration
 
 Jiwa currently uses a configuration file under `$HOME/.config/jiwa/config.json` that needs to be filled with:
